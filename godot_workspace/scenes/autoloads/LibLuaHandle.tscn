@@ -1,0 +1,3 @@
+[gd_scene format=3 uid="uid://bmmiceh7jgtts"]
+
+[node name="LibLuaHandle" type="LibLuaHandle"]

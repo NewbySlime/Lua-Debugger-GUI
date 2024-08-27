@@ -1,0 +1,3 @@
+[submodule "src/Lua-CPPAPI"]
+	path = src/Lua-CPPAPI
+	url = https://github.com/NewbySlime/Lua-Debug-API.git

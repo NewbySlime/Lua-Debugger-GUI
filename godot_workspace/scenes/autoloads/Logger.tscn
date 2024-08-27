@@ -1,0 +1,3 @@
+[gd_scene format=3 uid="uid://bxtl6divk2lq4"]
+
+[node name="Logger" type="Logger"]
