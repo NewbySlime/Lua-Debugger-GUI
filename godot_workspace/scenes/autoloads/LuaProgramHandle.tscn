@@ -1,0 +1,3 @@
+[gd_scene format=3 uid="uid://ck3nn6kivf1bp"]
+
+[node name="LuaProgramHandle" type="LuaProgramHandle"]

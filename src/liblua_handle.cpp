@@ -1,4 +1,5 @@
 #include "defines.h"
+#include "error_trigger.h"
 #include "liblua_handle.h"
 #include "logger.h"
 #include "strutil.h"
@@ -35,8 +36,6 @@ void LibLuaHandle::_bind_methods(){
 
 LibLuaHandle::LibLuaHandle(){
   // don't load library here, load when on _ready()
-  _library_handle = NULL;
-  _func_data = NULL;
 }
 
 LibLuaHandle::~LibLuaHandle(){
@@ -45,7 +44,7 @@ LibLuaHandle::~LibLuaHandle(){
 
 
 void LibLuaHandle::_load_library(){
-  if(_func_data)
+  if(!_lib_store)
     _unload_library();
 
   int _quit_code = 0;
@@ -54,8 +53,12 @@ void LibLuaHandle::_load_library(){
     _library_path.append(GDSTR_AS_PRIMITIVE(__gd_str), __gd_str.length());
   }
 
+  function_data* _func_data = new function_data();
+
 #if (_WIN64) || (_WIN32)
-{ // limiting scope
+  HMODULE _library_handle = NULL;
+
+{ // Start Of Scope Limiter
   _library_handle = LoadLibraryA(_library_path.c_str());
   if(!_library_handle){
     DWORD _error_code = GetLastError();
@@ -78,13 +81,8 @@ void LibLuaHandle::_load_library(){
     GameUtils::Logger::print_err_static(_err_msg);
     std::string _err_msg_cstr(GDSTR_AS_PRIMITIVE(_err_msg), _err_msg.length());
 
-    MessageBoxA(
-      NULL,
-      _err_msg_cstr.c_str(),
-      "Debugger Error",
-      MB_OK | MB_ICONERROR
-    );
-    
+    ErrorTrigger::trigger_error_message(_err_msg_cstr.c_str());
+
     _quit_code = _error_code;
     goto on_error_label;
   }
@@ -100,7 +98,6 @@ void LibLuaHandle::_load_library(){
     GameUtils::Logger::print_err_static(gd_format_str(_fname_not_found_format, String(fname))); \
   }
 
-  _func_data = new function_data();
   __CHECK_MODULE_FUNCTION(_func_data->vsdlf, var_set_def_logger_func, CPPLUA_VARIANT_SET_DEFAULT_LOGGER_STR)
   __CHECK_MODULE_FUNCTION(_func_data->dvf, del_var_func, CPPLUA_DELETE_VARIANT_STR)
   __CHECK_MODULE_FUNCTION(_func_data->gpocf, gpo_create_func, CPPLUA_CREATE_GLOBAL_PRINT_OVERRIDE_STR)
@@ -109,36 +106,35 @@ void LibLuaHandle::_load_library(){
   __CHECK_MODULE_FUNCTION(_func_data->rhdf, rh_delete_func, CPPLUA_DELETE_RUNTIME_HANDLER_STR)
 
   if(_function_not_found){
-    MessageBoxA(
-      NULL,
-      "Error occurred! Cannot find needed functions for Lua Debugging API, check logs for details.",
-      "Debugger Error",
-      MB_OK | MB_ICONERROR
-    );
+    ErrorTrigger::trigger_error_message("Error occured! Cannot find needed functions for Lua Debugging API, check logs for details.");
 
     _quit_code = GetLastError();
     goto on_error_label;
   }
-}
+
+  _lib_store = std::make_shared<LibLuaStore>(_library_handle, _func_data);
+} // End Of Scope Limiter
 #endif
+
+  delete _func_data;
 
   GameUtils::Logger::print_log_static("[LibLuaHandle] Lua Debugging API loaded.");
   return;
 
   on_error_label:{
+#if (_WIN64) || (_WIN32)
+    if(_library_handle)
+      FreeLibrary(_library_handle);
+#endif
+
+    delete _func_data;
+
     get_tree()->quit(_quit_code);
   return;}
 }
 
 void LibLuaHandle::_unload_library(){
-  if(!_func_data)
-    return;
-
-  FreeLibrary(_library_handle);
-  _library_handle = NULL;
-
-  delete _func_data;
-  _func_data = NULL;
+  _lib_store = NULL;
 }
 
 
@@ -151,6 +147,30 @@ void LibLuaHandle::_ready(){
 }
 
 
-const LibLuaHandle::function_data* LibLuaHandle::get_library_function(){
-  return _func_data;
+std::shared_ptr<LibLuaStore> LibLuaHandle::get_library_store(){
+  return _lib_store;
 }
+
+
+
+
+#if (_WIN64) || (_WIN32)
+LibLuaStore::LibLuaStore(HMODULE library_handle, LibLuaHandle::function_data* fdata){
+  _lib_handle = library_handle;
+  _function_data = new LibLuaHandle::function_data(*fdata);
+}
+
+LibLuaStore::~LibLuaStore(){
+  FreeLibrary(_lib_handle);
+  delete _function_data;
+}
+
+
+HMODULE LibLuaStore::get_library_handle(){
+  return _lib_handle;
+}
+
+const LibLuaHandle::function_data* LibLuaStore::get_function_data(){
+  return _function_data;
+}
+#endif

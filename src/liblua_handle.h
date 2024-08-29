@@ -7,11 +7,14 @@
 #include "Lua-CPPAPI/Src/luaglobal_print_override.h"
 #include "Lua-CPPAPI/Src/luaruntime_handler.h"
 
+#include "memory"
+
 #if (_WIN64) || (_WIN32)
 #include "Windows.h"
 #endif
 
 
+class LibLuaStore;
 class LibLuaHandle: public godot::Node{
   GDCLASS(LibLuaHandle, godot::Node)
 
@@ -35,11 +38,7 @@ class LibLuaHandle: public godot::Node{
     };
 
   private:
-#if (_WIN64) || (_WIN32)
-    HMODULE _library_handle = NULL;
-#endif
-
-    function_data* _func_data = NULL;
+    std::shared_ptr<LibLuaStore> _lib_store;
 
     void _load_library();
     void _unload_library();
@@ -53,7 +52,32 @@ class LibLuaHandle: public godot::Node{
 
     void _ready() override;
 
-    const function_data* get_library_function();
+    std::shared_ptr<LibLuaStore> get_library_store();
 };
+
+
+class LibLuaStore{
+  private:
+#if (_WIN64) || (_WIN32)
+    HMODULE _lib_handle;
+#endif
+
+    LibLuaHandle::function_data* _function_data;
+
+
+  public:
+#if (_WIN64) || (_WIN32)
+    LibLuaStore(HMODULE library_handle, LibLuaHandle::function_data* fdata);
+#endif
+  
+    ~LibLuaStore();
+
+#if (_WIN64) || (_WIN32)
+    HMODULE get_library_handle();
+#endif
+
+    const LibLuaHandle::function_data* get_function_data();
+};
+
 
 #endif

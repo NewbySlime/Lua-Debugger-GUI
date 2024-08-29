@@ -1,0 +1,331 @@
+[gd_scene load_steps=10 format=3 uid="uid://cgjecodaf2s77"]
+
+[ext_resource type="PackedScene" uid="uid://bbpgcr0g21epu" path="res://scenes/clone/code_context.tscn" id="1_b2mtp"]
+[ext_resource type="SystemFont" uid="uid://c8jm14y54ky2t" path="res://resource/styles/text/code_font.tres" id="1_n2lrs"]
+[ext_resource type="PackedScene" uid="uid://bjrfnaiwj0xc7" path="res://scenes/clone/button.tscn" id="2_thhei"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1wdwd"]
+bg_color = Color(0.113379, 0.195545, 0.293532, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_iv52k"]
+bg_color = Color(0.0923971, 0.0923971, 0.0923971, 1)
+border_width_left = 2
+border_color = Color(0.0338533, 0.0338533, 0.0338532, 1)
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_isque"]
+bg_color = Color(0.133196, 0.133196, 0.133196, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ha21p"]
+bg_color = Color(0.0807833, 0.0807834, 0.0807833, 1)
+border_width_bottom = 3
+border_color = Color(0, 0, 0, 1)
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="LabelSettings" id="LabelSettings_iypxv"]
+font_size = 14
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_j6ujq"]
+
+[node name="Control" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_1wdwd")
+
+[node name="VSplitContainer" type="VSplitContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 0
+theme_override_constants/autohide = 0
+
+[node name="HSplitContainer" type="HSplitContainer" parent="VSplitContainer"]
+custom_minimum_size = Vector2(0, 400)
+layout_mode = 2
+theme_override_constants/separation = 0
+theme_override_constants/autohide = 0
+split_offset = 444
+
+[node name="CodeWindow" type="HBoxContainer" parent="VSplitContainer/HSplitContainer"]
+custom_minimum_size = Vector2(400, 0)
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Grouping" type="Control" parent="VSplitContainer/HSplitContainer/CodeWindow"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PlaceholderLabel" type="Label" parent="VSplitContainer/HSplitContainer/CodeWindow/Grouping"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -69.0
+offset_top = -11.5
+offset_right = 69.0
+offset_bottom = 11.5
+grow_horizontal = 2
+grow_vertical = 2
+text = "Open File To Start"
+
+[node name="TabContainer" type="CodeWindow" parent="VSplitContainer/HSplitContainer/CodeWindow/Grouping"]
+code_context_scene = "res://scenes/clone/code_context.tscn"
+context_menu_path = NodePath("../../BackgroundContainer/MenuControl")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+
+[node name="CodeContext" parent="VSplitContainer/HSplitContainer/CodeWindow/Grouping/TabContainer" instance=ExtResource("1_b2mtp")]
+layout_mode = 2
+
+[node name="BackgroundContainer" type="MarginContainer" parent="VSplitContainer/HSplitContainer/CodeWindow"]
+layout_mode = 2
+theme_override_constants/margin_top = 35
+
+[node name="MenuControl" type="CodeContextMenu" parent="VSplitContainer/HSplitContainer/CodeWindow/BackgroundContainer"]
+button_container_path = NodePath("../AreaMargin/ContextMenu")
+layout_mode = 2
+
+[node name="Panel" type="Panel" parent="VSplitContainer/HSplitContainer/CodeWindow/BackgroundContainer"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_iv52k")
+
+[node name="AreaMargin" type="MarginContainer" parent="VSplitContainer/HSplitContainer/CodeWindow/BackgroundContainer"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 20
+theme_override_constants/margin_right = 12
+
+[node name="ContextMenu" type="VBoxContainer" parent="VSplitContainer/HSplitContainer/CodeWindow/BackgroundContainer/AreaMargin"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="ButtonRun" parent="VSplitContainer/HSplitContainer/CodeWindow/BackgroundContainer/AreaMargin/ContextMenu" instance=ExtResource("2_thhei")]
+layout_mode = 2
+tooltip_text = "Run this Lua code."
+
+[node name="ButtonOpen" parent="VSplitContainer/HSplitContainer/CodeWindow/BackgroundContainer/AreaMargin/ContextMenu" instance=ExtResource("2_thhei")]
+layout_mode = 2
+tooltip_text = "Open another Lua code."
+
+[node name="ButtonClose" parent="VSplitContainer/HSplitContainer/CodeWindow/BackgroundContainer/AreaMargin/ContextMenu" instance=ExtResource("2_thhei")]
+layout_mode = 2
+tooltip_text = "Close this Lua code."
+
+[node name="InspectWindowContainer" type="Control" parent="VSplitContainer/HSplitContainer"]
+custom_minimum_size = Vector2(400, 0)
+layout_mode = 2
+
+[node name="Panel" type="Panel" parent="VSplitContainer/HSplitContainer/InspectWindowContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_isque")
+
+[node name="InspectWindow" type="VBoxContainer" parent="VSplitContainer/HSplitContainer/InspectWindowContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="CodeFlowControlContainer" type="Control" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow"]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+
+[node name="Panel" type="Panel" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/CodeFlowControlContainer"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -150.0
+offset_right = 150.0
+offset_bottom = 50.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_ha21p")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/CodeFlowControlContainer"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -150.0
+offset_right = 150.0
+offset_bottom = 50.0
+grow_horizontal = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="ButtonResume" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/CodeFlowControlContainer/HBoxContainer" instance=ExtResource("2_thhei")]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+
+[node name="ButtonPause" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/CodeFlowControlContainer/HBoxContainer" instance=ExtResource("2_thhei")]
+visible = false
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+
+[node name="ButtonStepIn" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/CodeFlowControlContainer/HBoxContainer" instance=ExtResource("2_thhei")]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+
+[node name="ButtonStepOut" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/CodeFlowControlContainer/HBoxContainer" instance=ExtResource("2_thhei")]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+
+[node name="ButtonStepOver" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/CodeFlowControlContainer/HBoxContainer" instance=ExtResource("2_thhei")]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+
+[node name="ButtonStop" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/CodeFlowControlContainer/HBoxContainer" instance=ExtResource("2_thhei")]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+
+[node name="ButtonRestart" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/CodeFlowControlContainer/HBoxContainer" instance=ExtResource("2_thhei")]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+
+[node name="MarginContainer" type="MarginContainer" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow"]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 8
+
+[node name="ExecutionContext" type="Label" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/MarginContainer"]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("1_n2lrs")
+theme_override_font_sizes/font_size = 14
+text = "Variable Inspector"
+label_settings = SubResource("LabelSettings_iypxv")
+vertical_alignment = 1
+
+[node name="ScrollContainer" type="ScrollContainer" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="VariableInspector" type="Tree" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/ScrollContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ExecutionContextContainer" type="Control" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow"]
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+
+[node name="Panel" type="Panel" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/ExecutionContextContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/ExecutionContextContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_right = 16
+
+[node name="ExecutionContext" type="Label" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/ExecutionContextContainer/MarginContainer"]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("1_n2lrs")
+theme_override_font_sizes/font_size = 14
+text = "Function _test | Line 21"
+vertical_alignment = 1
+
+[node name="ConsoleWindow" type="Control" parent="VSplitContainer"]
+custom_minimum_size = Vector2(0, 200)
+layout_mode = 2
+
+[node name="Panel" type="Panel" parent="VSplitContainer/ConsoleWindow"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="VSplitContainer/ConsoleWindow"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ConsoleMargin" type="MarginContainer" parent="VSplitContainer/ConsoleWindow/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_right = 10
+
+[node name="ConsoleText" type="TextEdit" parent="VSplitContainer/ConsoleWindow/VBoxContainer/ConsoleMargin"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_fonts/font = ExtResource("1_n2lrs")
+theme_override_styles/normal = SubResource("StyleBoxEmpty_j6ujq")
+placeholder_text = "Console Window
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+test
+testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest
+test
+test
+test"
+editable = false
+wrap_mode = 1
+autowrap_mode = 1

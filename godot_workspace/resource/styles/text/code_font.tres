@@ -1,0 +1,4 @@
+[gd_resource type="SystemFont" format=3 uid="uid://c8jm14y54ky2t"]
+
+[resource]
+font_names = PackedStringArray("Source Code Pro")

@@ -12,12 +12,15 @@ config_version=5
 
 config/name="Minimal GUI Lua Debugger"
 config/features=PackedStringArray("4.2", "GL Compatibility")
+run/max_fps=60
+run/low_processor_mode=true
 config/icon="res://icon.svg"
 
 [autoload]
 
 GlobalLogger="*res://scenes/autoloads/Logger.tscn"
 GlobalLibLuaHandle="*res://scenes/autoloads/LibLuaHandle.tscn"
+GlobalLuaProgramHandle="*res://scenes/autoloads/LuaProgramHandle.tscn"
 
 [rendering]
 
