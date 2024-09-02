@@ -13,9 +13,11 @@ class CodeContextMenu: public godot::Control{
 
   public:
     enum button_enum{
-      be_opening = 0b1,
-      be_closing = 0b10,
-      be_running = 0b100
+      be_opening    = 0b1,
+      be_closing    = 0b10,
+      be_running    = 0b100,
+      be_refresh    = 0b1000,
+      be_allbutton  = 0b1111
     };
 
 
@@ -26,6 +28,7 @@ class CodeContextMenu: public godot::Control{
     godot::Button* _opening_button;
     godot::Button* _closing_button;
     godot::Button* _running_button;
+    godot::Button* _refresh_button;
 
     bool _initialized = false;
 
@@ -33,7 +36,10 @@ class CodeContextMenu: public godot::Control{
     void _opening_button_pressed();
     void _closing_button_pressed();
     void _running_button_pressed();
+    void _refresh_button_pressed();
 
+    typedef void (*_iterate_button_cb)(godot::Button* button, void* data);
+    void _iterate_button(button_enum type, _iterate_button_cb cb, void* data);
 
   protected:
     static void _bind_methods();
@@ -45,6 +51,7 @@ class CodeContextMenu: public godot::Control{
     void _ready() override;
 
     void show_button(button_enum button, bool show);
+    void disable_button(button_enum button, bool flag);
 
     bool is_initialized() const;
     

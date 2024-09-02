@@ -114,8 +114,7 @@ void CodeContext::focus_at_line(int line){
   if(line < 0)
     return;
 
-  double _target_line_focus = line + (double)_code_edit->get_line_height()/2;
-  _code_edit->set_v_scroll(Math::max(_target_line_focus, (double)_code_edit->get_line_count()));
+  _code_edit->set_v_scroll(line - 3);
 }
 
 
@@ -134,7 +133,8 @@ void CodeContext::clear_breakpoints(){
 
 
 void CodeContext::set_executing_line(int line, bool flag){
-  _code_edit->set_line_as_executing(line, flag);
+  // ???
+  _code_edit->set_line_as_executing(line-1, flag);
 }
 
 void CodeContext::clear_executing_lines(){

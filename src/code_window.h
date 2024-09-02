@@ -3,6 +3,7 @@
 
 #include "code_context.h"
 #include "code_context_menu.h"
+#include "console_window.h"
 #include "luaprogram_handle.h"
 
 #include "godot_cpp/classes/packed_scene.hpp"
@@ -41,8 +42,10 @@ class CodeWindow: public godot::TabContainer{
     CodeContextMenu* _context_menu_node;
 
     LuaProgramHandle* _program_handle;
+    ConsoleWindow* _console_window;
 
     _path_node* _path_code_root;
+    std::map<uint64_t, CodeContext*> _context_map;
 
     std::string _initial_prompt_path;
 
@@ -53,8 +56,12 @@ class CodeWindow: public godot::TabContainer{
     void _recursive_delete(_path_node* node);
 
     void _on_file_loaded(godot::String file_path);
-    void _on_breakpoint_added(int line, int id);
-    void _on_breakpoint_removed(int line, int id);
+    void _on_breakpoint_added(int line, uint64_t id);
+    void _on_breakpoint_removed(int line, uint64_t id);
+
+    void _lua_on_started();
+    void _lua_on_paused();
+    void _lua_on_stopped();
 
     void _on_context_menu_button_pressed(int button_type);
 

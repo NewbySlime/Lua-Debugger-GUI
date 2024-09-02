@@ -1,8 +1,18 @@
-[gd_scene load_steps=10 format=3 uid="uid://cgjecodaf2s77"]
+[gd_scene load_steps=20 format=3 uid="uid://cgjecodaf2s77"]
 
 [ext_resource type="PackedScene" uid="uid://bbpgcr0g21epu" path="res://scenes/clone/code_context.tscn" id="1_b2mtp"]
 [ext_resource type="SystemFont" uid="uid://c8jm14y54ky2t" path="res://resource/styles/text/code_font.tres" id="1_n2lrs"]
 [ext_resource type="PackedScene" uid="uid://bjrfnaiwj0xc7" path="res://scenes/clone/button.tscn" id="2_thhei"]
+[ext_resource type="Texture2D" uid="uid://weay00pp8h3g" path="res://resource/images/logo/RunLogo.png" id="3_62uea"]
+[ext_resource type="Texture2D" uid="uid://ck5adtau1uy1h" path="res://resource/images/logo/OpenLogo.png" id="4_t1ptk"]
+[ext_resource type="Texture2D" uid="uid://bdawqmxglaexi" path="res://resource/images/logo/CloseLogo.png" id="5_1pc77"]
+[ext_resource type="Texture2D" uid="uid://df8culy4t0ymo" path="res://resource/images/logo/ResumeLogo.png" id="6_nj6ib"]
+[ext_resource type="Texture2D" uid="uid://c2mbns6wbw0gx" path="res://resource/images/logo/PauseLogo.png" id="7_e624x"]
+[ext_resource type="Texture2D" uid="uid://cxyb3gf2vj7yi" path="res://resource/images/logo/StepInLogo.png" id="8_4qto1"]
+[ext_resource type="Texture2D" uid="uid://oldsxscq85dk" path="res://resource/images/logo/StepOutLogo.png" id="9_3d8kr"]
+[ext_resource type="Texture2D" uid="uid://dtlb5xa15xrtr" path="res://resource/images/logo/StepOverLogo.png" id="10_gesx8"]
+[ext_resource type="Texture2D" uid="uid://y5rx4xwwk3ng" path="res://resource/images/logo/StopLogo.png" id="11_qgwsp"]
+[ext_resource type="Texture2D" uid="uid://b6ymps4xmwpr0" path="res://resource/images/logo/RestartLogo.png" id="12_ifwq8"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1wdwd"]
 bg_color = Color(0.113379, 0.195545, 0.293532, 1)
@@ -127,14 +137,22 @@ theme_override_constants/separation = 20
 [node name="ButtonRun" parent="VSplitContainer/HSplitContainer/CodeWindow/BackgroundContainer/AreaMargin/ContextMenu" instance=ExtResource("2_thhei")]
 layout_mode = 2
 tooltip_text = "Run this Lua code."
+icon = ExtResource("3_62uea")
 
 [node name="ButtonOpen" parent="VSplitContainer/HSplitContainer/CodeWindow/BackgroundContainer/AreaMargin/ContextMenu" instance=ExtResource("2_thhei")]
 layout_mode = 2
 tooltip_text = "Open another Lua code."
+icon = ExtResource("4_t1ptk")
 
 [node name="ButtonClose" parent="VSplitContainer/HSplitContainer/CodeWindow/BackgroundContainer/AreaMargin/ContextMenu" instance=ExtResource("2_thhei")]
 layout_mode = 2
 tooltip_text = "Close this Lua code."
+icon = ExtResource("5_1pc77")
+
+[node name="ButtonRefresh" parent="VSplitContainer/HSplitContainer/CodeWindow/BackgroundContainer/AreaMargin/ContextMenu" instance=ExtResource("2_thhei")]
+layout_mode = 2
+tooltip_text = "Refresh the file."
+icon = ExtResource("12_ifwq8")
 
 [node name="InspectWindowContainer" type="Control" parent="VSplitContainer/HSplitContainer"]
 custom_minimum_size = Vector2(400, 0)
@@ -157,7 +175,8 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="CodeFlowControlContainer" type="Control" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow"]
+[node name="CodeFlowControlContainer" type="CodeFlowControl" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow"]
+control_button_container_path = NodePath("HBoxContainer")
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 
@@ -188,37 +207,51 @@ alignment = 1
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
+tooltip_text = "Resume Lua code."
+icon = ExtResource("6_nj6ib")
 
 [node name="ButtonPause" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/CodeFlowControlContainer/HBoxContainer" instance=ExtResource("2_thhei")]
 visible = false
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
+tooltip_text = "Pause Lua code."
+icon = ExtResource("7_e624x")
 
 [node name="ButtonStepIn" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/CodeFlowControlContainer/HBoxContainer" instance=ExtResource("2_thhei")]
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
+tooltip_text = "Step into Lua function."
+icon = ExtResource("8_4qto1")
 
 [node name="ButtonStepOut" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/CodeFlowControlContainer/HBoxContainer" instance=ExtResource("2_thhei")]
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
+tooltip_text = "Step outside current function."
+icon = ExtResource("9_3d8kr")
 
 [node name="ButtonStepOver" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/CodeFlowControlContainer/HBoxContainer" instance=ExtResource("2_thhei")]
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
+tooltip_text = "Step over a line."
+icon = ExtResource("10_gesx8")
 
 [node name="ButtonStop" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/CodeFlowControlContainer/HBoxContainer" instance=ExtResource("2_thhei")]
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
+tooltip_text = "Stop current Lua run."
+icon = ExtResource("11_qgwsp")
 
 [node name="ButtonRestart" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/CodeFlowControlContainer/HBoxContainer" instance=ExtResource("2_thhei")]
 layout_mode = 2
 size_flags_horizontal = 4
 size_flags_vertical = 4
+tooltip_text = "Restart this code."
+icon = ExtResource("12_ifwq8")
 
 [node name="MarginContainer" type="MarginContainer" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow"]
 layout_mode = 2
@@ -239,11 +272,24 @@ vertical_alignment = 1
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="VariableInspector" type="Tree" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/ScrollContainer"]
+[node name="VariableInspector" type="VariableWatcher" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/ScrollContainer"]
+variable_tree_path = NodePath("VariableInspector")
 layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 3
 
-[node name="ExecutionContextContainer" type="Control" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow"]
+[node name="VariableInspector" type="Tree" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/ScrollContainer/VariableInspector"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_vertical = 3
+
+[node name="ExecutionContextContainer" type="ExecutionContext" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow"]
+execution_info_path = NodePath("MarginContainer/ExecutionContext")
+modulate = Color(0.633757, 0.633757, 0.633757, 1)
 custom_minimum_size = Vector2(0, 30)
 layout_mode = 2
 
@@ -272,7 +318,8 @@ theme_override_font_sizes/font_size = 14
 text = "Function _test | Line 21"
 vertical_alignment = 1
 
-[node name="ConsoleWindow" type="Control" parent="VSplitContainer"]
+[node name="ConsoleWindow" type="ConsoleWindow" parent="VSplitContainer"]
+output_text_path = NodePath("VBoxContainer/ConsoleMargin/ConsoleText")
 custom_minimum_size = Vector2(0, 200)
 layout_mode = 2
 
@@ -303,29 +350,17 @@ layout_mode = 2
 size_flags_vertical = 3
 theme_override_fonts/font = ExtResource("1_n2lrs")
 theme_override_styles/normal = SubResource("StyleBoxEmpty_j6ujq")
-placeholder_text = "Console Window
-test
-test
-test
-test
-test
-test
-test
-test
-test
-test
-test
-test
-test
-test
-test
-test
-test
-test
-testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest
-test
-test
-test"
+text = "Test
+
+Test
+Test
+Test
+Test
+Test
+Test
+Test
+Test"
+placeholder_text = "Console Window"
 editable = false
 wrap_mode = 1
 autowrap_mode = 1

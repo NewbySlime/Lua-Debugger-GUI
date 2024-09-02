@@ -6,10 +6,14 @@
 // includes for registered class
 #include "code_context.h"
 #include "code_context_menu.h"
+#include "code_flow_control.h"
 #include "code_window.h"
+#include "console_window.h"
+#include "execution_context.h"
 #include "liblua_handle.h"
 #include "luaprogram_handle.h"
 #include "logger.h"
+#include "variable_watcher.h"
 
 using namespace godot;
 
@@ -22,10 +26,14 @@ void initialize_gdextension_module(ModuleInitializationLevel p_level) {
   // set all the class here
   ClassDB::register_class<CodeContext>();
   ClassDB::register_class<CodeContextMenu>();
+  ClassDB::register_class<CodeFlowControl>();
   ClassDB::register_class<CodeWindow>();
+  ClassDB::register_class<ConsoleWindow>();
+  ClassDB::register_class<ExecutionContext>();
   ClassDB::register_class<GameUtils::Logger>();
   ClassDB::register_class<LuaProgramHandle>();
   ClassDB::register_class<LibLuaHandle>();
+  ClassDB::register_class<VariableWatcher>();
 }
 
 void uninitialize_gdextension_module(ModuleInitializationLevel p_level) {

@@ -19,11 +19,7 @@
 #define CPPLUA_LIBRARY_FNAME "CPPAPI.dll"
 #endif
 
-#ifdef DEBUG_ENABLED
 #define CPPLUA_LIBRARY_PATH ProjectSettings::get_singleton()->globalize_path("res://bin/" CPPLUA_LIBRARY_FNAME)
-#else
-#define CPPLUA_LIBRARY_PATH OS::get_singleton()->get_executable_path() + "/" + CPPLUA_LIBRARY_FNAME
-#endif
 
 
 using namespace godot;
@@ -60,6 +56,11 @@ void LibLuaHandle::_load_library(){
 
 { // Start Of Scope Limiter
   _library_handle = LoadLibraryA(_library_path.c_str());
+
+  // Try to load in the same working directory
+  if(!_library_handle)
+    _library_handle = LoadLibraryA(CPPLUA_LIBRARY_FNAME);
+
   if(!_library_handle){
     DWORD _error_code = GetLastError();
 
@@ -100,10 +101,13 @@ void LibLuaHandle::_load_library(){
 
   __CHECK_MODULE_FUNCTION(_func_data->vsdlf, var_set_def_logger_func, CPPLUA_VARIANT_SET_DEFAULT_LOGGER_STR)
   __CHECK_MODULE_FUNCTION(_func_data->dvf, del_var_func, CPPLUA_DELETE_VARIANT_STR)
+  __CHECK_MODULE_FUNCTION(_func_data->gtnf, get_type_name_func, CPPLUA_GET_TYPE_NAME_STR);
   __CHECK_MODULE_FUNCTION(_func_data->gpocf, gpo_create_func, CPPLUA_CREATE_GLOBAL_PRINT_OVERRIDE_STR)
   __CHECK_MODULE_FUNCTION(_func_data->gpodf, gpo_delete_func, CPPLUA_DELETE_GLOBAL_PRINT_OVERRIDE_STR)
   __CHECK_MODULE_FUNCTION(_func_data->rhcf, rh_create_func, CPPLUA_CREATE_RUNTIME_HANDLER_STR)
   __CHECK_MODULE_FUNCTION(_func_data->rhdf, rh_delete_func, CPPLUA_DELETE_RUNTIME_HANDLER_STR)
+  __CHECK_MODULE_FUNCTION(_func_data->vwcf, vw_create_func, CPPLUA_CREATE_VARIABLE_WATCHER_STR)
+  __CHECK_MODULE_FUNCTION(_func_data->vwdf, vw_delete_func, CPPLUA_DELETE_VARIABLE_WATCHER_STR)
 
   if(_function_not_found){
     ErrorTrigger::trigger_error_message("Error occured! Cannot find needed functions for Lua Debugging API, check logs for details.");

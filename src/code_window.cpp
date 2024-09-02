@@ -3,6 +3,7 @@
 #include "directory_util.h"
 #include "error_trigger.h"
 #include "logger.h"
+#include "node_utils.h"
 #include "strutil.h"
 
 #include "godot_cpp/classes/engine.hpp"
@@ -14,6 +15,11 @@
 
 
 using namespace godot;
+
+
+#ifdef DEBUG_ENABLED
+#pragma optimize("", off)
+#endif
 
 
 void CodeWindow::_bind_methods(){
@@ -28,6 +34,10 @@ void CodeWindow::_bind_methods(){
   ClassDB::bind_method(D_METHOD("_on_file_loaded", "file_path"), &CodeWindow::_on_file_loaded);
   ClassDB::bind_method(D_METHOD("_on_breakpoint_added", "line", "id"), &CodeWindow::_on_breakpoint_added);
   ClassDB::bind_method(D_METHOD("_on_breakpoint_removed", "line", "id"), &CodeWindow::_on_breakpoint_removed);
+
+  ClassDB::bind_method(D_METHOD("_lua_on_started"), &CodeWindow::_lua_on_started);
+  ClassDB::bind_method(D_METHOD("_lua_on_paused"), &CodeWindow::_lua_on_paused);
+  ClassDB::bind_method(D_METHOD("_lua_on_stopped"), &CodeWindow::_lua_on_stopped);
 
   ClassDB::bind_method(D_METHOD("_on_context_menu_button_pressed", "button_type"), &CodeWindow::_on_context_menu_button_pressed);
 
@@ -60,14 +70,58 @@ void CodeWindow::_on_file_loaded(String file_path){
   emit_signal(SIGNAL_CODE_WINDOW_FILE_LOADED, String(file_path));
 }
 
-void CodeWindow::_on_breakpoint_added(int line, int id){
-  CodeContext* _context = (CodeContext*)UtilityFunctions::instance_from_id(id);
-  emit_signal(SIGNAL_CODE_WINDOW_BREAKPOINT_ADDED, String(_context->get_current_file_path().c_str()), Variant(line));
+void CodeWindow::_on_breakpoint_added(int line, uint64_t id){
+  auto _iter = _context_map.find(id);
+  if(_iter == _context_map.end())
+    return;
+    
+  emit_signal(SIGNAL_CODE_WINDOW_BREAKPOINT_ADDED, String(_iter->second->get_current_file_path().c_str()), Variant(line));
 }
 
-void CodeWindow::_on_breakpoint_removed(int line, int id){
-  CodeContext* _context = (CodeContext*)UtilityFunctions::instance_from_id(id);
-  emit_signal(SIGNAL_CODE_WINDOW_BREAKPOINT_REMOVED, String(_context->get_current_file_path().c_str()), Variant(line));
+void CodeWindow::_on_breakpoint_removed(int line, uint64_t id){
+  auto _iter = _context_map.find(id);
+  if(_iter == _context_map.end())
+    return;
+    
+  emit_signal(SIGNAL_CODE_WINDOW_BREAKPOINT_REMOVED, String(_iter->second->get_current_file_path().c_str()), Variant(line));
+}
+
+
+void CodeWindow::_lua_on_started(){
+  _context_menu_node->disable_button(CodeContextMenu::be_running, true);
+}
+
+void CodeWindow::_lua_on_paused(){
+  std::string _fname = _program_handle->get_current_running_file();
+  int _line_code = _program_handle->get_current_running_line();
+
+  if(_fname.size() < 1)
+    return;
+
+  _path_node* _node = _get_path_node(_fname);
+  if(!_node){
+    if(!open_code_context(_fname))
+      return;
+    
+    _node = _get_path_node(_fname);
+  }
+
+  set_current_tab(_node->_code_node->get_index());
+
+  _node->_code_node->clear_executing_lines();
+  _node->_code_node->set_executing_line(_line_code, true);
+
+  _node->_code_node->focus_at_line(_line_code);
+}
+
+void CodeWindow::_lua_on_stopped(){
+  // clear each execution line
+  for(int i = 0; i < get_child_count(); i++){
+    CodeContext* _code_context = (CodeContext*)get_child(i);
+    _code_context->clear_executing_lines();
+  }
+
+  _context_menu_node->disable_button(CodeContextMenu::be_running, false);
 }
 
 
@@ -84,12 +138,18 @@ void CodeWindow::_on_context_menu_button_pressed(int button_type){
     break; case CodeContextMenu::be_running:{
       run_current_code_context();
     }
+
+    break; case CodeContextMenu::be_refresh:{
+      CodeContext* _code_context = get_current_code_context();
+      if(_code_context)
+        _code_context->reload_file();
+    }
   }
 }
 
 
 void CodeWindow::_update_context_button_visibility(){
-  _context_menu_node->show_button((CodeContextMenu::button_enum)(CodeContextMenu::be_closing | CodeContextMenu::be_running), get_tab_count() > 0);
+  _context_menu_node->show_button((CodeContextMenu::button_enum)(CodeContextMenu::be_closing | CodeContextMenu::be_running | CodeContextMenu::be_refresh), get_tab_count() > 0);
 }
 
 
@@ -131,8 +191,6 @@ CodeWindow::_path_node* CodeWindow::_create_path_node(const std::string& file_pa
     }
   }
 
-  _update_context_button_visibility();
-
   return _node;
 }
 
@@ -153,8 +211,6 @@ bool CodeWindow::_delete_path_node(const std::string& file_path){
       break;
   }
 
-  _update_context_button_visibility();
-
   return true;
 }
 
@@ -172,6 +228,17 @@ void CodeWindow::_ready(){
   }
 
   _initial_prompt_path = DirectoryUtil::strip_filename(_exe_path);
+
+
+  _program_handle = get_node<LuaProgramHandle>("/root/GlobalLuaProgramHandle");
+  if(!_program_handle){
+    GameUtils::Logger::print_err_static("[CodeWindow] Cannot get Node for Program Handle for Lua.");
+
+    _quit_code = ERR_UNAVAILABLE;
+    goto on_error_label;
+  }
+
+  _console_window = get_any_node<ConsoleWindow>(get_node<Node>("/root"), true);
 
   _context_menu_node = get_node<CodeContextMenu>(_context_menu_path);
   if(!_context_menu_node){
@@ -210,6 +277,9 @@ void CodeWindow::_ready(){
     _child_node->queue_free();
   }
 
+  _program_handle->connect(SIGNAL_LUA_ON_STARTING, Callable(this, "_lua_on_started"));
+  _program_handle->connect(SIGNAL_LUA_ON_PAUSING, Callable(this, "_lua_on_paused"));
+  _program_handle->connect(SIGNAL_LUA_ON_STOPPING, Callable(this, "_lua_on_stopped"));
 
   // _context_menu_node binding handled in _process
 
@@ -315,7 +385,10 @@ bool CodeWindow::open_code_context(const std::string& file_path){
   CodeContext* _inst_node = (CodeContext*)_code_context_scene->instantiate();
   godot::Error _err = _inst_node->load_file(file_path);
   if(_err != OK){
-    ErrorTrigger::trigger_error_message(format_str("Cannot open file. Error Code: %d\n", _err).c_str());
+    std::string _err_msg = format_str("Cannot open file. Error Code: %d", _err);
+    _console_window->append_output_buffer("[ERR] " + _err_msg + "\n");
+
+    _inst_node->queue_free();
     return false;
   }
 
@@ -330,6 +403,10 @@ bool CodeWindow::open_code_context(const std::string& file_path){
 
   _path_node* _pnode = _create_path_node(file_path);
   _pnode->_code_node = _inst_node;
+
+  _context_map[_inst_node->get_instance_id()] = _inst_node;
+
+  _update_context_button_visibility();
 
   return true;
 }
@@ -348,6 +425,10 @@ bool CodeWindow::close_current_code_context(){
   remove_child(_code);
   _code->queue_free();
 
+  _context_map.erase(_code->get_instance_id());
+
+  _update_context_button_visibility();
+
   return true;
 }
 
@@ -363,6 +444,10 @@ bool CodeWindow::close_code_context(const std::string& file_path){
   // tab switching handled by godot
   remove_child(_code);
   _code->queue_free();
+
+  _context_map.erase(_code->get_instance_id());
+
+  _update_context_button_visibility();
 
   return true;
 }

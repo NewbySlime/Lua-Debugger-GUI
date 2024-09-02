@@ -6,6 +6,7 @@
 #include "Lua-CPPAPI/Src/lua_variant.h"
 #include "Lua-CPPAPI/Src/luaglobal_print_override.h"
 #include "Lua-CPPAPI/Src/luaruntime_handler.h"
+#include "Lua-CPPAPI/Src/luavariable_watcher.h"
 
 #include "memory"
 
@@ -25,6 +26,8 @@ class LibLuaHandle: public godot::Node{
         var_set_def_logger_func vsdlf;
         // Delete variant that is created by the DLL
         del_var_func dvf;
+        // Get type name of a variant type
+        get_type_name_func gtnf;
 
         // Create print_override
         gpo_create_func gpocf;
@@ -35,6 +38,11 @@ class LibLuaHandle: public godot::Node{
         rh_create_func rhcf;
         // Delete runtime_handler
         rh_delete_func rhdf;
+
+        // Create variable_watcher
+        vw_create_func vwcf;
+        // Delete variable_watcher
+        vw_delete_func vwdf;
     };
 
   private:
