@@ -39,7 +39,7 @@
 
 namespace godot {
 
-template <class T>
+template <typename T>
 struct PtrToArg {};
 
 #define MAKE_PTRARG(m_type)                                            \
@@ -161,32 +161,33 @@ MAKE_PTRARG(PackedFloat64Array);
 MAKE_PTRARG(PackedStringArray);
 MAKE_PTRARG(PackedVector2Array);
 MAKE_PTRARG(PackedVector3Array);
+MAKE_PTRARG(PackedVector4Array);
 MAKE_PTRARG(PackedColorArray);
 MAKE_PTRARG_BY_REFERENCE(Variant);
 
 // This is for Object.
 
-template <class T>
+template <typename T>
 struct PtrToArg<T *> {
 	static_assert(std::is_base_of<Object, T>::value, "Cannot encode non-Object value as an Object");
 	_FORCE_INLINE_ static T *convert(const void *p_ptr) {
-		return reinterpret_cast<T *>(godot::internal::get_object_instance_binding(*reinterpret_cast<GDExtensionObjectPtr *>(const_cast<void *>(p_ptr))));
+		return likely(p_ptr) ? reinterpret_cast<T *>(godot::internal::get_object_instance_binding(*reinterpret_cast<GDExtensionObjectPtr *>(const_cast<void *>(p_ptr)))) : nullptr;
 	}
 	typedef Object *EncodeT;
 	_FORCE_INLINE_ static void encode(T *p_var, void *p_ptr) {
-		*reinterpret_cast<const void **>(p_ptr) = p_var ? p_var->_owner : nullptr;
+		*reinterpret_cast<const void **>(p_ptr) = likely(p_var) ? p_var->_owner : nullptr;
 	}
 };
 
-template <class T>
+template <typename T>
 struct PtrToArg<const T *> {
 	static_assert(std::is_base_of<Object, T>::value, "Cannot encode non-Object value as an Object");
 	_FORCE_INLINE_ static const T *convert(const void *p_ptr) {
-		return reinterpret_cast<const T *>(godot::internal::get_object_instance_binding(*reinterpret_cast<GDExtensionObjectPtr *>(const_cast<void *>(p_ptr))));
+		return likely(p_ptr) ? reinterpret_cast<const T *>(godot::internal::get_object_instance_binding(*reinterpret_cast<GDExtensionObjectPtr *>(const_cast<void *>(p_ptr)))) : nullptr;
 	}
 	typedef const Object *EncodeT;
 	_FORCE_INLINE_ static void encode(T *p_var, void *p_ptr) {
-		*reinterpret_cast<const void **>(p_ptr) = p_var ? p_var->_owner : nullptr;
+		*reinterpret_cast<const void **>(p_ptr) = likely(p_var) ? p_var->_owner : nullptr;
 	}
 };
 

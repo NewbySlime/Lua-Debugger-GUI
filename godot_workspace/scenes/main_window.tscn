@@ -108,9 +108,11 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 size_flags_horizontal = 3
+current_tab = 0
 
 [node name="CodeContext" parent="VSplitContainer/HSplitContainer/CodeWindow/Grouping/TabContainer" instance=ExtResource("1_b2mtp")]
 layout_mode = 2
+metadata/_tab_index = 0
 
 [node name="BackgroundContainer" type="MarginContainer" parent="VSplitContainer/HSplitContainer/CodeWindow"]
 layout_mode = 2

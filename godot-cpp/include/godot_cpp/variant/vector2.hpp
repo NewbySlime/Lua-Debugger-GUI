@@ -91,8 +91,16 @@ struct _NO_DISCARD_ Vector2 {
 		return Vector2(MIN(x, p_vector2.x), MIN(y, p_vector2.y));
 	}
 
+	Vector2 minf(real_t p_scalar) const {
+		return Vector2(MIN(x, p_scalar), MIN(y, p_scalar));
+	}
+
 	Vector2 max(const Vector2 &p_vector2) const {
 		return Vector2(MAX(x, p_vector2.x), MAX(y, p_vector2.y));
+	}
+
+	Vector2 maxf(real_t p_scalar) const {
+		return Vector2(MAX(x, p_scalar), MAX(y, p_scalar));
 	}
 
 	real_t distance_to(const Vector2 &p_vector2) const;
@@ -123,6 +131,7 @@ struct _NO_DISCARD_ Vector2 {
 
 	bool is_equal_approx(const Vector2 &p_v) const;
 	bool is_zero_approx() const;
+	bool is_finite() const;
 
 	Vector2 operator+(const Vector2 &p_v) const;
 	void operator+=(const Vector2 &p_v);
@@ -168,7 +177,9 @@ struct _NO_DISCARD_ Vector2 {
 	Vector2 ceil() const;
 	Vector2 round() const;
 	Vector2 snapped(const Vector2 &p_by) const;
+	Vector2 snappedf(real_t p_by) const;
 	Vector2 clamp(const Vector2 &p_min, const Vector2 &p_max) const;
+	Vector2 clampf(real_t p_min, real_t p_max) const;
 	real_t aspect() const { return width / height; }
 
 	operator String() const;

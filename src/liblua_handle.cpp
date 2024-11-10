@@ -99,15 +99,7 @@ void LibLuaHandle::_load_library(){
     GameUtils::Logger::print_err_static(gd_format_str(_fname_not_found_format, String(fname))); \
   }
 
-  __CHECK_MODULE_FUNCTION(_func_data->vsdlf, var_set_def_logger_func, CPPLUA_VARIANT_SET_DEFAULT_LOGGER_STR)
-  __CHECK_MODULE_FUNCTION(_func_data->dvf, del_var_func, CPPLUA_DELETE_VARIANT_STR)
-  __CHECK_MODULE_FUNCTION(_func_data->gtnf, get_type_name_func, CPPLUA_GET_TYPE_NAME_STR);
-  __CHECK_MODULE_FUNCTION(_func_data->gpocf, gpo_create_func, CPPLUA_CREATE_GLOBAL_PRINT_OVERRIDE_STR)
-  __CHECK_MODULE_FUNCTION(_func_data->gpodf, gpo_delete_func, CPPLUA_DELETE_GLOBAL_PRINT_OVERRIDE_STR)
-  __CHECK_MODULE_FUNCTION(_func_data->rhcf, rh_create_func, CPPLUA_CREATE_RUNTIME_HANDLER_STR)
-  __CHECK_MODULE_FUNCTION(_func_data->rhdf, rh_delete_func, CPPLUA_DELETE_RUNTIME_HANDLER_STR)
-  __CHECK_MODULE_FUNCTION(_func_data->vwcf, vw_create_func, CPPLUA_CREATE_VARIABLE_WATCHER_STR)
-  __CHECK_MODULE_FUNCTION(_func_data->vwdf, vw_delete_func, CPPLUA_DELETE_VARIABLE_WATCHER_STR)
+  __CHECK_MODULE_FUNCTION(_func_data->get_cc, get_api_compilation_context, CPPLUA_GET_API_COMPILATION_CONTEXT_STR)
 
   if(_function_not_found){
     ErrorTrigger::trigger_error_message("Error occured! Cannot find needed functions for Lua Debugging API, check logs for details.");

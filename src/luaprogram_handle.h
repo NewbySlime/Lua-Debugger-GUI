@@ -5,6 +5,8 @@
 
 #include "godot_cpp/classes/node.hpp"
 
+#include "Lua-CPPAPI/Src/luathread_control.h"
+
 
 #define SIGNAL_LUA_ON_STARTING "on_starting"
 #define SIGNAL_LUA_ON_STOPPING "on_stopping"
@@ -26,10 +28,12 @@ class LuaProgramHandle: public godot::Node{
     std::shared_ptr<LibLuaStore> _lua_lib_data;
 
     lua::I_runtime_handler* _runtime_handler = NULL;
-    lua::debug::I_execution_flow* _execution_flow = NULL;
-    lua::debug::I_variable_watcher* _variable_watcher = NULL;
-
     lua::global::I_print_override* _print_override = NULL;
+
+    // Only valid when running
+    lua::I_thread_handle_reference* _thread_handle = NULL;
+    // Only valid when running
+    lua::debug::I_variable_watcher* _variable_watcher = NULL;
 
     int _execution_code;
     std::string _execution_err_msg;
@@ -40,25 +44,26 @@ class LuaProgramHandle: public godot::Node{
     HANDLE _event_resumed;
 
     HANDLE _event_read;
+
+    CRITICAL_SECTION* _obj_mutex_ptr;
+    CRITICAL_SECTION _obj_mutex;
 #endif
 
     std::string _current_file_path;
 
     bool _blocking_on_start = true;
-
     bool _initialized = false;
 
+    void _lock_object() const;
+    void _unlock_object() const;
 
     int _load_runtime_handler(const std::string& file_path);
     void _unload_runtime_handler();
-
-    void _run_execution_cb();
 
     void _init_check();
 
   protected:
     static void _bind_methods();
-
   
   public:
     LuaProgramHandle();
@@ -74,7 +79,7 @@ class LuaProgramHandle: public godot::Node{
     void stop_lua();
     void restart_lua();
 
-    bool is_running();
+    bool is_running() const;
 
     void resume_lua();
     void pause_lua();
@@ -90,9 +95,19 @@ class LuaProgramHandle: public godot::Node{
     // only updated when paused
     int get_current_running_line() const;
 
-    lua::I_runtime_handler* get_runtime_handler();
-    lua::debug::I_variable_watcher* get_variable_watcher();
-    lua::global::I_print_override* get_print_override();
+    // Use this when accessing API objects, as the objects might be freed when the program is stopping. 
+    void lock_object() const;
+    void unlock_object() const;
+
+    lua::I_runtime_handler* get_runtime_handler() const;
+    lua::global::I_print_override* get_print_override() const;
+
+    // Returns NULL if not yet running.
+    lua::I_thread_handle_reference* get_main_thread() const;
+    // Returns NULL if not yet running.
+    lua::debug::I_execution_flow* get_execution_flow() const;
+    // Returns NULL if not yet running.
+    lua::debug::I_variable_watcher* get_variable_watcher() const;
 };
 
 #endif

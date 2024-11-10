@@ -3,8 +3,9 @@
 #
 # godot-cpp cmake arguments
 # GODOT_GDEXTENSION_DIR:		Path to the directory containing GDExtension interface header and API JSON file
-# GODOT_CPP_SYSTEM_HEADERS		Mark the header files as SYSTEM. This may be useful to supress warnings in projects including this one.
+# GODOT_CPP_SYSTEM_HEADERS		Mark the header files as SYSTEM. This may be useful to suppress warnings in projects including this one.
 # GODOT_CPP_WARNING_AS_ERROR	Treat any warnings as errors
+# GODOT_ENABLE_HOT_RELOAD       Build with hot reload support. Defaults to YES for Debug-builds and NO for Release-builds.
 # GODOT_CUSTOM_API_FILE:		Path to a custom GDExtension API JSON file (takes precedence over `gdextension_dir`)
 # FLOAT_PRECISION:				Floating-point precision level ("single", "double")
 #
@@ -37,7 +38,7 @@
 # Todo
 # Test build for Windows, Mac and mingw.
 
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.13)
 project(godot-cpp LANGUAGES CXX)
 
 option(GENERATE_TEMPLATE_GET_NODE "Generate a template version of the Node class's get_node." ON)
@@ -47,11 +48,6 @@ option(GODOT_CPP_WARNING_AS_ERROR "Treat warnings as errors" OFF)
 # Add path to modules
 list( APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/" )
 
-# Check if we are building ourself or being included
-if(${PROJECT_NAME} STREQUAL ${CMAKE_PROJECT_NAME})
-    set(GODOT_CPP_BUILDING_SELF ON)
-endif()
-
 # Set some helper variables for readability
 set( compiler_is_clang "$<OR:$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:Clang>>" )
 set( compiler_is_gnu "$<CXX_COMPILER_ID:GNU>" )
@@ -60,6 +56,13 @@ set( compiler_is_msvc "$<CXX_COMPILER_ID:MSVC>" )
 # Default build type is Debug in the SConstruct
 if("${CMAKE_BUILD_TYPE}" STREQUAL "")
 	set(CMAKE_BUILD_TYPE Debug)
+endif()
+
+# Hot reload is enabled by default in Debug-builds
+if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
+    option(GODOT_ENABLE_HOT_RELOAD "Build with hot reload support" ON)
+else()
+    option(GODOT_ENABLE_HOT_RELOAD "Build with hot reload support" OFF)
 endif()
 
 if(NOT DEFINED BITS)
@@ -121,6 +124,10 @@ else()
 	endif()
 endif()
 
+if (GODOT_ENABLE_HOT_RELOAD)
+    set(GODOT_COMPILE_FLAGS "${GODOT_COMPILE_FLAGS} -D HOT_RELOAD_ENABLED")
+endif()
+
 # Generate source from the bindings file
 find_package(Python3 3.4 REQUIRED) # pathlib should be present
 if(GENERATE_TEMPLATE_GET_NODE)
@@ -157,12 +164,6 @@ add_library(${PROJECT_NAME} STATIC
 add_library(godot::cpp ALIAS ${PROJECT_NAME})
 
 include(GodotCompilerWarnings)
-
-# Treat warnings as errors if we are building ourself
-if(GODOT_CPP_BUILDING_SELF)
-    unset( GODOT_CPP_WARNING_AS_ERROR CACHE )
-    set_warning_as_error()
-endif()
 
 target_compile_features(${PROJECT_NAME}
 	PRIVATE

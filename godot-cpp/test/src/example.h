@@ -24,6 +24,7 @@
 #include <godot_cpp/variant/variant.hpp>
 
 #include <godot_cpp/core/binder_common.hpp>
+#include <godot_cpp/core/gdvirtual.gen.inc>
 
 using namespace godot;
 
@@ -81,6 +82,9 @@ private:
 	Vector2 dprop[3];
 	int last_rpc_arg = 0;
 
+	const bool object_instance_binding_set_by_parent_constructor;
+	bool has_object_instance_binding() const;
+
 public:
 	// Constants.
 	enum Constants {
@@ -119,6 +123,8 @@ public:
 	void emit_custom_signal(const String &name, int value);
 	int def_args(int p_a = 100, int p_b = 200);
 
+	bool is_object_binding_set_by_parent_constructor() const;
+
 	Array test_array() const;
 	int test_tarray_arg(const TypedArray<int64_t> &p_array);
 	TypedArray<Vector2> test_tarray() const;
@@ -126,9 +132,10 @@ public:
 	Example *test_node_argument(Example *p_node) const;
 	String test_string_ops() const;
 	String test_str_utility() const;
-	bool test_string_is_fourty_two(const String &p_str) const;
+	bool test_string_is_forty_two(const String &p_str) const;
 	String test_string_resize(String p_original) const;
 	int test_vector_ops() const;
+	int test_vector_init_list() const;
 
 	bool test_object_cast_to_node(Object *p_object) const;
 	bool test_object_cast_to_control(Object *p_object) const;
@@ -181,6 +188,12 @@ public:
 	// Virtual function override (no need to bind manually).
 	virtual bool _has_point(const Vector2 &point) const override;
 	virtual void _input(const Ref<InputEvent> &event) override;
+
+	GDVIRTUAL2R(String, _do_something_virtual, String, int);
+	String test_virtual_implemented_in_script(const String &p_name, int p_value);
+	GDVIRTUAL1(_do_something_virtual_with_control, Control *);
+
+	String test_use_engine_singleton() const;
 };
 
 VARIANT_ENUM_CAST(Example::Constants);
@@ -198,11 +211,63 @@ protected:
 	static void _bind_methods() {}
 };
 
-class ExampleAbstract : public Object {
-	GDCLASS(ExampleAbstract, Object);
+class ExampleAbstractBase : public Object {
+	GDCLASS(ExampleAbstractBase, Object);
 
 protected:
 	static void _bind_methods() {}
+
+	virtual int test_function() = 0;
+};
+
+class ExampleConcrete : public ExampleAbstractBase {
+	GDCLASS(ExampleConcrete, ExampleAbstractBase);
+
+protected:
+	static void _bind_methods() {}
+
+	virtual int test_function() override { return 25; }
+};
+
+class ExampleBase : public Node {
+	GDCLASS(ExampleBase, Node);
+
+protected:
+	int value1 = 0;
+	int value2 = 0;
+
+	static void _bind_methods();
+
+	void _notification(int p_what);
+
+public:
+	int get_value1() { return value1; }
+	int get_value2() { return value2; }
+};
+
+class ExampleChild : public ExampleBase {
+	GDCLASS(ExampleChild, ExampleBase);
+
+protected:
+	static void _bind_methods() {}
+
+	void _notification(int p_what);
+};
+
+class ExampleRuntime : public Node {
+	GDCLASS(ExampleRuntime, Node);
+
+	int prop_value = 12;
+
+protected:
+	static void _bind_methods();
+
+public:
+	void set_prop_value(int p_prop_value);
+	int get_prop_value() const;
+
+	ExampleRuntime();
+	~ExampleRuntime();
 };
 
 #endif // EXAMPLE_CLASS_H

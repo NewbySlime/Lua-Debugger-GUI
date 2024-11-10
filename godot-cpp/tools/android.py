@@ -1,7 +1,8 @@
 import os
 import sys
+
+import common_compiler_flags
 import my_spawn
-from SCons.Script import ARGUMENTS
 
 
 def options(opts):
@@ -64,6 +65,12 @@ def generate(env):
     elif sys.platform == "darwin":
         toolchain += "darwin-x86_64"
         env.Append(LINKFLAGS=["-shared"])
+
+    if not os.path.exists(toolchain):
+        print("ERROR: Could not find NDK toolchain at " + toolchain + ".")
+        print("Make sure NDK version " + get_ndk_version() + " is installed.")
+        env.Exit(1)
+
     env.PrependENVPath("PATH", toolchain + "/bin")  # This does nothing half of the time, but we'll put it here anyways
 
     # Get architecture info
@@ -112,3 +119,5 @@ def generate(env):
     env.Append(LINKFLAGS=["--target=" + arch_info["target"] + env["android_api_level"], "-march=" + arch_info["march"]])
 
     env.Append(CPPDEFINES=["ANDROID_ENABLED", "UNIX_ENABLED"])
+
+    common_compiler_flags.generate(env)

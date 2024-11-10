@@ -20,6 +20,8 @@ class VariableWatcher: public godot::Control{
     LibLuaHandle* _lua_lib;
     std::shared_ptr<LibLuaStore> _lua_lib_data;
 
+    std::set<const void*> _parsed_table_list;
+
     LuaProgramHandle* _lua_program_handle;
 
     godot::NodePath _variable_tree_path;

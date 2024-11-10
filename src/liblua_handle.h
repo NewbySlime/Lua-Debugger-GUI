@@ -3,10 +3,10 @@
 
 #include "godot_cpp/classes/node.hpp"
 
-#include "Lua-CPPAPI/Src/lua_variant.h"
+#include "Lua-CPPAPI/Src/luavariant.h"
 #include "Lua-CPPAPI/Src/luaglobal_print_override.h"
 #include "Lua-CPPAPI/Src/luaruntime_handler.h"
-#include "Lua-CPPAPI/Src/luavariable_watcher.h"
+#include "Lua-CPPAPI/Src/luadebug_variable_watcher.h"
 
 #include "memory"
 
@@ -22,27 +22,8 @@ class LibLuaHandle: public godot::Node{
   public:
     struct function_data{
       public:
-        // Set logger for Variant in DLL compilation
-        var_set_def_logger_func vsdlf;
-        // Delete variant that is created by the DLL
-        del_var_func dvf;
-        // Get type name of a variant type
-        get_type_name_func gtnf;
-
-        // Create print_override
-        gpo_create_func gpocf;
-        // Delete print_override
-        gpo_delete_func gpodf;
-
-        // Create runtime_handler
-        rh_create_func rhcf;
-        // Delete runtime_handler
-        rh_delete_func rhdf;
-
-        // Create variable_watcher
-        vw_create_func vwcf;
-        // Delete variable_watcher
-        vw_delete_func vwdf;
+        // Get compilation_context of the Library
+        get_api_compilation_context get_cc;
     };
 
   private:

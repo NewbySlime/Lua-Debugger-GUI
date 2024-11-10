@@ -60,13 +60,22 @@ void ExecutionContext::_toggle_gray(bool flag){
 void ExecutionContext::_update_execution_info(){
   const char* _info_format = "Function %s | Line %d";
 
-  I_execution_flow* _execution_flow = _program_handle->get_runtime_handler()->get_execution_flow_interface();
+  _program_handle->lock_object();
+  if(!_program_handle->is_running())
+    goto skip_to_return;
+
+{ // enclosure for using gotos
+  I_execution_flow* _execution_flow = _program_handle->get_execution_flow();
 
   // only fetch the current function's name when the layer is above 1 (on lua-main)
   std::string _fname = _program_handle->get_current_function();
   int _line_code = _program_handle->get_current_running_line();
-  
+
   _execution_info->set_text(format_str(_info_format, _fname.c_str(), _line_code).c_str());
+} // enclosure closing
+
+  skip_to_return:{}
+  _program_handle->unlock_object();
 }
 
 void ExecutionContext::_clear_execution_info(){

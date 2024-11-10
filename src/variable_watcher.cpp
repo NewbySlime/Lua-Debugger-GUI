@@ -1,15 +1,19 @@
 #include "directory_util.h"
 #include "error_trigger.h"
 #include "logger.h"
+#include "strutil.h"
 #include "variable_watcher.h"
 
 #include "godot_cpp/classes/engine.hpp"
 #include "godot_cpp/classes/scene_tree.hpp"
 #include "godot_cpp/core/class_db.hpp"
 
+#include "Lua-CPPAPI/Src/luaapi_value.h"
+
 
 using namespace godot;
 using namespace lua;
+using namespace lua::api;
 using namespace lua::debug;
 
 
@@ -47,6 +51,7 @@ void VariableWatcher::_lua_on_stopping(){
 
 
 void VariableWatcher::_update_tree_item(TreeItem* parent_item, I_variable_watcher* watcher){
+  const core _lc = _lua_program_handle->get_runtime_handler()->get_lua_core_copy();
   for(int i = 0; i < watcher->get_variable_count(); i++){
     auto _iter = _filter_key.find(watcher->get_variable_name(i));
     if(_iter != _filter_key.end())
@@ -55,10 +60,10 @@ void VariableWatcher::_update_tree_item(TreeItem* parent_item, I_variable_watche
     TreeItem* _var_title = _variable_tree->create_item(parent_item);
     I_variant* _variant = watcher->get_variable(i);
 
-    { // Closing scope not to fill memory as it might recurse
-      std::string _format_val_str = format_str("%s: %s", watcher->get_variable_name(i), _lua_lib_data->get_function_data()->gtnf(watcher->get_variable_type(i)));
-      _var_title->set_text(0, _format_val_str.c_str());
-    }
+  { // Closing scope not to fill memory as it might recurse
+    std::string _format_val_str = format_str("%s: %s", watcher->get_variable_name(i), _lc.context->api_value->ttypename(_lc.istate, watcher->get_variable_type(i)));
+    _var_title->set_text(0, _format_val_str.c_str());
+  }
     
     switch(_variant->get_type()){
       break; case lua::table_var::get_static_lua_type():{
@@ -78,6 +83,13 @@ void VariableWatcher::_update_tree_item(TreeItem* parent_item, I_variable_watche
 }
 
 void VariableWatcher::_update_tree_item(TreeItem* parent_item, I_table_var* var){
+  auto _iter = _parsed_table_list.find(var->get_table_pointer());
+  if(_iter != _parsed_table_list.end())
+    return;
+
+  _parsed_table_list.insert(var->get_table_pointer());
+
+  const core _lc = _lua_program_handle->get_runtime_handler()->get_lua_core_copy();
   const I_variant** _keys_list = var->get_keys();
   
   int _idx = 0;
@@ -85,12 +97,12 @@ void VariableWatcher::_update_tree_item(TreeItem* parent_item, I_table_var* var)
     const I_variant* _key_data = _keys_list[_idx];
     string_store _key_str; _key_data->to_string(&_key_str);
     auto _iter = _filter_key.find(_key_str.data);
-    if(_iter == _filter_key.end()){
+    if(_iter != _filter_key.end()){
       TreeItem* _var_title = _variable_tree->create_item(parent_item);
       I_variant* _value_data = var->get_value(_key_data);
 
       { // Closing scope not to fill memory as it might recurse
-        std::string _format_val_str = format_str("%s: %s", _key_str.data.c_str(), _lua_lib_data->get_function_data()->gtnf(_value_data->get_type()));
+        std::string _format_val_str = format_str("%s: %s", _key_str.data.c_str(), _lc.context->api_value->ttypename(_lc.istate, _value_data->get_type()));
         _var_title->set_text(0, _format_val_str.c_str());
       }
 
@@ -105,6 +117,8 @@ void VariableWatcher::_update_tree_item(TreeItem* parent_item, I_table_var* var)
           _var_data->set_text(0, _value_str.data.c_str());
         }
       }
+
+      var->free_variant(_value_data);
     }
 
     _idx++;
@@ -115,16 +129,21 @@ void VariableWatcher::_update_tree_item(TreeItem* parent_item, I_table_var* var)
 void VariableWatcher::_update_variable_tree(){
   _clear_variable_tree();
 
-  I_variable_watcher* _variable_watcher = _lua_program_handle->get_variable_watcher();
+  _lua_program_handle->lock_object();
+  if(!_lua_program_handle->is_running())
+    goto skip_to_return;
 
-  I_execution_flow* _execution_flow = _lua_program_handle->get_runtime_handler()->get_execution_flow_interface();
+{ // enclosure for using gotos
+  _parsed_table_list.clear();
+
+  I_variable_watcher* _variable_watcher = _lua_program_handle->get_variable_watcher();
+  I_execution_flow* _execution_flow = _lua_program_handle->get_execution_flow();
   
   std::string _file_name = DirectoryUtil::strip_path(_lua_program_handle->get_current_running_file());
   TreeItem* _file_item = _variable_tree->create_item();
   _file_item->set_text(0, _file_name.c_str());
 
-
-  // udpate local variables
+  // update local variables
   _variable_watcher->fetch_current_function_variables();
 
   std::string _func_name = _lua_program_handle->get_current_function();
@@ -133,7 +152,6 @@ void VariableWatcher::_update_variable_tree(){
 
   _update_tree_item(_func_item, _variable_watcher);
 
-
   // update global variables
   _variable_watcher->fetch_global_table_data();
 
@@ -141,6 +159,11 @@ void VariableWatcher::_update_variable_tree(){
   _global_item->set_text(0, "Global");
 
   _update_tree_item(_global_item, _variable_watcher);
+} // enclosure closing
+
+  skip_to_return:{}
+  _parsed_table_list.clear();
+  _lua_program_handle->unlock_object();
 }
 
 void VariableWatcher::_clear_variable_tree(){

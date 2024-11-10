@@ -37,11 +37,21 @@ ConsoleWindow::~ConsoleWindow(){
 
 
 void ConsoleWindow::_on_output_written(){
+  _program_handle->lock_object();
+
+{ // enclosure for using gotos
   I_print_override* _print_override = _program_handle->get_print_override();
+  if(!_print_override)
+    goto skip_to_return;
+    
   string_store _str; _print_override->read_all(&_str);
 
   _add_string_to_output_buffer(_str.data);
   _write_to_output_text();
+} // enclosure closing
+
+  skip_to_return:{}
+  _program_handle->unlock_object();
 }
 
 

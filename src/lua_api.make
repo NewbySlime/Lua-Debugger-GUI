@@ -1,19 +1,23 @@
 # USER DATA
 
-MAIN_PROGRAM_FILE= TestSrc/test_dll.cpp
-OUTPUT_FILE= main.exe
+OUTPUT_FILE= unit_test.exe
+
+OPTIONAL_DELETE_FILE= "../../godot_workspace/bin/*.dll" "../../godot_workspace/bin/*.lib"
 
 DLL_OUTPUT_FILE= ../../godot_workspace/bin/CPPAPI.dll
 STATIC_DLIB_OUTPUT_FILE = ../../godot_workspace/bin/CPPAPI_static.lib
+UNIT_TEST_MEMTRACKER_OUTPUT_FILE= memtracker.dll
+UNIT_TEST_OUTPUT_FILE= unit_test.exe
 
 CLUA_SOURCE_FOLDER= LuaSrc/*.c
 CPPLIB_SOURCE_FOLDER= Src/*.cpp
-CPPLIB_SOURCE_STATIC_DLIB_SCRIPTS= Src/lua_vararr.cpp Src/lua_variant.cpp Src/string_store.cpp Src/stdlogger.cpp Src/luatable_util.cpp
+
+UNIT_TEST_MEMTRACKER_SOURCE_FOLDER= TestSrc/memtracker/*.cpp
+UNIT_TEST_SOURCE_FOLDER= TestSrc/unit_test/*.cpp
 
 # END OF USER DATA
 
 
-AS_DLL=FALSE
 AS_DEBUG=FALSE
 
 COMPILER_TYPE=mingw
@@ -45,9 +49,22 @@ COMPILE_OPTION=
 MINGW_COMPILE_OPTIONS= -c -std=c++17
 MSVC_COMPILE_OPTIONS= /c /std:c++17 /EHsc /TP
 
+USING_LUA_API_OPTION=
+MIGNW_USING_LUA_API_OPTIONS= -DUSING_LUA_API
+MSVC_USING_LUA_API_OPTIONS= /DUSING_LUA_API
+
+INCLUDE_LUA_OPTION=
+MINGW_INCLUDE_LUA_OPTIONS= -DLUA_CODE_EXISTS
+MSVC_INCLUDE_LUA_OPTIONS= /DLUA_CODE_EXISTS
+
+USING_MEMDYNAMIC_MANAGEMENT_OPTION=
+MINGW_USING_MEMDYNAMIC_MANAGEMENT_OPTIONS= -DUSING_MEMDYNAMIC_MANAGEMENT
+MSVC_USING_MEMDYNAMIC_MANAGEMENT_OPTIONS=	/DUSING_MEMDYNAMIC_MANAGEMENT
+
+
 LINK_OPTION=
 MINGW_LINK_OPTIONS=
-MSVC_LINK_OPTIONS= /MT
+MSVC_LINK_OPTIONS=
 
 LINK_DLL_OPTION=
 MINGW_LINK_DLL_OPTIONS= -shared
@@ -58,8 +75,8 @@ MINGW_COMBINE_LINK_OPTIONS= -r
 MSVC_COMBINE_LINK_OPTIONS= 
 
 DEBUG_COMPILE_OPTION=
-MINGW_DEBUG_COMPILE_OPTIONS= -g -O0 -ggdb
-MSVC_DEBUG_COMPILE_OPTIONS= /Z7
+MINGW_DEBUG_COMPILE_OPTIONS= -g -O0 -ggdb -DDEBUG_BUILD
+MSVC_DEBUG_COMPILE_OPTIONS= /Od /Z7 /DDEBUG_BUILD /MTd
 
 DEBUG_LINK_OPTION=
 MINGW_DEBUG_LINK_OPTIONS=
@@ -83,6 +100,9 @@ $(if $(call cmp_str,$(COMPILER_TYPE),mingw),
 	$(eval COMPILE_COMMAND=$(MINGW_COMPILE_COMMAND))
 	$(eval COMPILE_OPTION=$(MINGW_COMPILE_OPTIONS))
 
+	$(eval USING_LUA_API_OPTION=$(MIGNW_USING_LUA_API_OPTIONS))
+	$(eval USING_MEMDYNAMIC_MANAGEMENT_OPTION=$(MINGW_USING_MEMDYNAMIC_MANAGEMENT_OPTIONS))
+
 	$(eval LINK_COMMAND=$(MINGW_LINK_COMMAND))
 	$(eval LINK_OPTION=$(MINGW_LINK_OPTIONS))
 
@@ -98,8 +118,11 @@ $(if $(call cmp_str,$(COMPILER_TYPE),msvc),
 	$(eval COMPILE_COMMAND=$(MSVC_COMPILE_COMMAND))
 	$(eval COMPILE_OPTION=$(MSVC_COMPILE_OPTIONS))
 
+	$(eval USING_LUA_API_OPTION=$(MSVC_USING_LUA_API_OPTIONS))
+	$(eval USING_MEMDYNAMIC_MANAGEMENT_OPTION=$(MSVC_USING_MEMDYNAMIC_MANAGEMENT_OPTIONS))
+
 	$(eval LINK_COMMAND=$(MSVC_LINK_COMMAND))
-	$(eval LINK_OPTION=$(MSVC_LINK_OPTION))
+	$(eval LINK_OPTION=$(MSVC_LINK_OPTIONS))
 
 	$(eval COMBINING_LINK_COMMAND=$(MSVC_COMBINING_LINK_COMMAND))
 	$(eval COMBINE_LINK_OPTION=$(MSVC_COMBINE_LINK_OPTIONS))
@@ -129,10 +152,12 @@ endef
 define update_dll_flag
 $(if $(call cmp_str,$(COMPILER_TYPE),mingw),
 	$(eval LINK_DLL_OPTION=$(MINGW_LINK_DLL_OPTIONS))
+	$(eval INCLUDE_LUA_OPTION=$(MINGW_INCLUDE_LUA_OPTIONS))
 )
 
 $(if $(call cmp_str,$(COMPILER_TYPE),msvc),
 	$(eval LINK_DLL_OPTION=$(MSVC_LINK_DLL_OPTIONS))
+	$(eval INCLUDE_LUA_OPTION=$(MSVC_INCLUDE_LUA_OPTIONS))
 )
 endef
 
@@ -154,8 +179,9 @@ endef
 
 # MARK: Fn compile_script
 # Arg 1: Script to compile
+# Arg 2: Additional option
 define compile_script
-	$(COMPILE_COMMAND) $(COMPILE_OPTION) $(1) $(DEBUG_COMPILE_OPTION)
+	$(COMPILE_COMMAND) $(COMPILE_OPTION) $(1) $(DEBUG_COMPILE_OPTION) $(2)
 endef
 
 
@@ -177,6 +203,19 @@ endef
 
 
 
+define _compile_as_dll
+	$(call compile_script,$(CPPLIB_SOURCE_FOLDER),$(USING_LUA_API_OPTION) $(USING_MEMDYNAMIC_MANAGEMENT_OPTION))
+	$(call combine_compilation,*$(COMPILED_OBJECT_EXT),$(STATIC_DLIB_OUTPUT_FILE))
+
+	$(call delete_objects,*$(COMPILED_OBJECT_EXT))
+
+	$(call compile_script,$(CLUA_SOURCE_FOLDER))
+	$(call compile_script,$(CPPLIB_SOURCE_FOLDER),$(INCLUDE_LUA_OPTION) $(USING_LUA_API_OPTION) $(USING_MEMDYNAMIC_MANAGEMENT_OPTION))
+
+	$(call link_compilation,*$(COMPILED_OBJECT_EXT),$(DLL_OUTPUT_FILE),$(LINK_DLL_OPTION))
+endef
+
+
 
 _f_update_compiler:
 	$(call update_compiler_data)
@@ -189,43 +228,33 @@ f_use_mingw:
 f_use_msvc:
 	$(eval COMPILER_TYPE=msvc)
 
-f_as_dll:
-	$(eval AS_DLL=TRUE)
-
 f_as_debug:
 	$(eval AS_DEBUG=TRUE)
 
 
 
 
-define _compile_static_dlibs
-$(if $(call cmp_str,$(AS_DLL),TRUE),
-	$(call compile_script,$(CPPLIB_SOURCE_STATIC_DLIB_SCRIPTS))
-	$(call combine_compilation,*$(COMPILED_OBJECT_EXT),$(STATIC_DLIB_OUTPUT_FILE))
-)
-endef
-
-define _compile_main_program
-$(if $(call cmp_str,$(AS_DLL),FALSE),
-	$(call compile_script,$(MAIN_PROGRAM_FILE))
-)
-endef
-
-
 proc_compile: _f_update_compiler
-	$(call delete_objects,*$(COMPILED_OBJECT_EXT))
+	$(call delete_objects,*$(COMPILED_OBJECT_EXT) $(OPTIONAL_DELETE_FILE))
 
-	$(call compile_script,$(CLUA_SOURCE_FOLDER))
-	$(call _compile_static_dlibs)
-	$(call compile_script,$(CPPLIB_SOURCE_FOLDER))
-	$(call _compile_main_program)
-
-	$(eval _OUTPUT_FILE=$(if $(call cmp_str,$(AS_DLL),TRUE),$(DLL_OUTPUT_FILE),$(OUTPUT_FILE)))
-	$(eval _ADD_OPTION=$(if $(call cmp_str,$(AS_DLL),TRUE),$(LINK_DLL_OPTION),$(NIL_VAR)))
-
-	$(call link_compilation,*$(COMPILED_OBJECT_EXT),$(_OUTPUT_FILE),$(_ADD_OPTION))
+	$(call _compile_as_dll)
 
 	$(call delete_objects,*$(COMPILED_OBJECT_EXT))
+
+
+proc_unit_test: _f_update_compiler
+	$(call delete_objects,*$(COMPILED_OBJECT_EXT))
+
+	$(call compile_script,$(UNIT_TEST_MEMTRACKER_SOURCE_FOLDER))
+	$(call link_compilation,*$(COMPILED_OBJECT_EXT),$(UNIT_TEST_MEMTRACKER_OUTPUT_FILE),$(LINK_DLL_OPTION))
+
+	$(call delete_objects,*$(COMPILED_OBJECT_EXT))
+
+	$(call compile_script,$(UNIT_TEST_SOURCE_FOLDER),$(USING_LUA_API_OPTION) $(USING_MEMDYNAMIC_MANAGEMENT_OPTION))
+	$(call link_compilation,*$(COMPILED_OBJECT_EXT) $(STATIC_DLIB_OUTPUT_FILE),$(UNIT_TEST_OUTPUT_FILE))
+
+	$(call delete_objects,*$(COMPILED_OBJECT_EXT))
+
 
 mem_test:
-	drmemory -logdir ./log -quiet -ignore_kernel -- $(OUTPUT_FILE)
+	drmemory -logdir ./log -ignore_kernel -debug -dr_debug -- $(OUTPUT_FILE)

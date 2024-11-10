@@ -31,10 +31,10 @@
 #ifndef GODOT_LOCAL_VECTOR_HPP
 #define GODOT_LOCAL_VECTOR_HPP
 
-#include "godot_cpp/core/error_macros.hpp"
-#include "godot_cpp/core/memory.hpp"
-#include "godot_cpp/templates/sort_array.hpp"
-#include "godot_cpp/templates/vector.hpp"
+#include <godot_cpp/core/error_macros.hpp>
+#include <godot_cpp/core/memory.hpp>
+#include <godot_cpp/templates/sort_array.hpp>
+#include <godot_cpp/templates/vector.hpp>
 
 #include <initializer_list>
 #include <type_traits>
@@ -43,7 +43,7 @@ namespace godot {
 
 // If tight, it grows strictly as much as needed.
 // Otherwise, it grows exponentially (the default and what you want in most cases).
-template <class T, class U = uint32_t, bool force_trivial = false, bool tight = false>
+template <typename T, typename U = uint32_t, bool force_trivial = false, bool tight = false>
 class LocalVector {
 private:
 	U count = 0;
@@ -257,7 +257,11 @@ public:
 		return -1;
 	}
 
-	template <class C>
+	bool has(const T &p_val) const {
+		return find(p_val) != -1;
+	}
+
+	template <typename C>
 	void sort_custom() {
 		U len = count;
 		if (len == 0) {
@@ -331,7 +335,7 @@ public:
 	}
 };
 
-template <class T, class U = uint32_t, bool force_trivial = false>
+template <typename T, typename U = uint32_t, bool force_trivial = false>
 using TightLocalVector = LocalVector<T, U, force_trivial, true>;
 
 } // namespace godot

@@ -137,10 +137,22 @@ Vector2 Vector2::clamp(const Vector2 &p_min, const Vector2 &p_max) const {
 			CLAMP(y, p_min.y, p_max.y));
 }
 
+Vector2 Vector2::clampf(real_t p_min, real_t p_max) const {
+	return Vector2(
+			CLAMP(x, p_min, p_max),
+			CLAMP(y, p_min, p_max));
+}
+
 Vector2 Vector2::snapped(const Vector2 &p_step) const {
 	return Vector2(
 			Math::snapped(x, p_step.x),
 			Math::snapped(y, p_step.y));
+}
+
+Vector2 Vector2::snappedf(real_t p_step) const {
+	return Vector2(
+			Math::snapped(x, p_step),
+			Math::snapped(y, p_step));
 }
 
 Vector2 Vector2::limit_length(const real_t p_len) const {
@@ -186,6 +198,10 @@ bool Vector2::is_equal_approx(const Vector2 &p_v) const {
 
 bool Vector2::is_zero_approx() const {
 	return Math::is_zero_approx(x) && Math::is_zero_approx(y);
+}
+
+bool Vector2::is_finite() const {
+	return Math::is_finite(x) && Math::is_finite(y);
 }
 
 Vector2::operator String() const {
