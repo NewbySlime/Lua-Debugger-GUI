@@ -146,6 +146,15 @@ int LuaProgramHandle::_load_runtime_handler(const std::string& file_path){
     NULL
   );
 
+  _print_reader_thread = CreateThread(
+    NULL,
+    0,
+    _print_reader_thread_ep,
+    this,
+    0,
+    NULL
+  );
+
   file_handler_api_constructor_data _fconstruct_data;
     _fconstruct_data.lua_core = &_lc;
     _fconstruct_data.use_pipe = true;
@@ -231,6 +240,14 @@ void LuaProgramHandle::_unload_runtime_handler(){
       CloseHandle(_output_reader_thread);
       _output_reader_thread = NULL;
     }
+
+    if(_print_reader_thread){
+      _print_reader_keep_reading = false;
+      SetEvent(_event_read);
+
+      WaitForSingleObject(_print_reader_thread, INFINITE);
+      CloseHandle(_print_reader_thread);
+    }
 #endif
   }
 
@@ -243,6 +260,7 @@ void LuaProgramHandle::_unload_runtime_handler(){
   _input_pipe_output = NULL;
   _output_pipe = NULL;
   _output_pipe_input = NULL;
+  _print_reader_thread = NULL;
 
   // event reset just in case
   ResetEvent(_event_stopped);
@@ -273,13 +291,33 @@ DWORD LuaProgramHandle::_output_reader_thread_ep(LPVOID data){
 
   // +1 for null-terminating character
   char _read_buffer[MAXIMUM_PIPE_READING_LENGTH+1];
-
   while(_this->_output_pipe){
     DWORD _bytes_read = 0; ReadFile(_this->_output_pipe, _read_buffer, MAXIMUM_PIPE_READING_LENGTH, &_bytes_read, NULL);
     _read_buffer[_bytes_read] = '\0';
     
     EnterCriticalSection(&_this->_output_mutex);
     _this->_output_reading_buffer += _read_buffer;
+    LeaveCriticalSection(&_this->_output_mutex);
+  }
+
+  return 0;
+}
+
+DWORD LuaProgramHandle::_print_reader_thread_ep(LPVOID data){
+  LuaProgramHandle* _this = (LuaProgramHandle*)data;
+  _this->_print_reader_keep_reading = true;
+
+  while(_this->_print_reader_keep_reading){
+    WaitForSingleObject(_this->_event_read, INFINITE);
+    ResetEvent(_this->_event_read);
+    if(!_this->_print_reader_keep_reading)
+      break;
+
+    EnterCriticalSection(&_this->_output_mutex);
+    gd_string_store _str;
+    _this->_print_override->read_all(&_str);
+
+    _this->_output_reading_buffer += _str.data;
     LeaveCriticalSection(&_this->_output_mutex);
   }
 
@@ -342,15 +380,6 @@ void LuaProgramHandle::_process(double delta){
   if(WaitForSingleObject(_event_paused, 0) == WAIT_OBJECT_0){
     ResetEvent(_event_paused);
     emit_signal(SIGNAL_LUA_ON_PAUSING);
-  }
-
-  if(WaitForSingleObject(_event_read, 0) == WAIT_OBJECT_0){
-    ResetEvent(_event_read);
-
-    gd_string_store _str;
-    _print_override->read_all(&_str);
-
-    emit_signal(SIGNAL_LUA_ON_OUTPUT_WRITTEN, _str.data);
   }
 
   EnterCriticalSection(&_output_mutex);

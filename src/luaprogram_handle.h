@@ -46,6 +46,9 @@ class LuaProgramHandle: public godot::Node{
 
     HANDLE _event_read;
 
+    bool _print_reader_keep_reading = true;
+    HANDLE _print_reader_thread = NULL;
+
     HANDLE _output_reader_thread = NULL;
     HANDLE _output_pipe = NULL;
     HANDLE _output_pipe_input = NULL;
