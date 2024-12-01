@@ -322,6 +322,7 @@ vertical_alignment = 1
 
 [node name="ConsoleWindow" type="ConsoleWindow" parent="VSplitContainer"]
 output_text_path = NodePath("VBoxContainer/ConsoleMargin/ConsoleText")
+input_text_path = NodePath("VBoxContainer/InputMargin/HBoxContainer/InputText")
 custom_minimum_size = Vector2(0, 200)
 layout_mode = 2
 
@@ -352,17 +353,26 @@ layout_mode = 2
 size_flags_vertical = 3
 theme_override_fonts/font = ExtResource("1_n2lrs")
 theme_override_styles/normal = SubResource("StyleBoxEmpty_j6ujq")
-text = "Test
-
-Test
-Test
-Test
-Test
-Test
-Test
-Test
-Test"
 placeholder_text = "Console Window"
 editable = false
 wrap_mode = 1
 autowrap_mode = 1
+
+[node name="InputMargin" type="MarginContainer" parent="VSplitContainer/ConsoleWindow/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_right = 10
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VSplitContainer/ConsoleWindow/VBoxContainer/InputMargin"]
+layout_mode = 2
+
+[node name="InputIndicator" type="Label" parent="VSplitContainer/ConsoleWindow/VBoxContainer/InputMargin/HBoxContainer"]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("1_n2lrs")
+text = ">"
+
+[node name="InputText" type="LineEdit" parent="VSplitContainer/ConsoleWindow/VBoxContainer/InputMargin/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_fonts/font = ExtResource("1_n2lrs")
+placeholder_text = "Input here"

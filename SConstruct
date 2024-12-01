@@ -26,7 +26,7 @@ env.Append(CPPPATH=[source_path+"/"])
 sources = Glob(source_path+"/*.cpp")
 
 if env["target"] == "template_debug":
-    env.Append(CXXFLAGS=["/Z7", "/FS", "/Od"])
+    env.Append(CXXFLAGS=["/Z7", "/FS"])
     env.Append(LINKFLAGS=["/DEBUG", cpplua_staticlib_path])
 else:
     env.Append(LINKFLAGS=[cpplua_staticlib_path])

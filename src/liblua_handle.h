@@ -3,10 +3,11 @@
 
 #include "godot_cpp/classes/node.hpp"
 
-#include "Lua-CPPAPI/Src/luavariant.h"
-#include "Lua-CPPAPI/Src/luaglobal_print_override.h"
-#include "Lua-CPPAPI/Src/luaruntime_handler.h"
 #include "Lua-CPPAPI/Src/luadebug_variable_watcher.h"
+#include "Lua-CPPAPI/Src/luaglobal_print_override.h"
+#include "Lua-CPPAPI/Src/lualibrary_iohandler.h"
+#include "Lua-CPPAPI/Src/luaruntime_handler.h"
+#include "Lua-CPPAPI/Src/luavariant.h"
 
 #include "memory"
 
@@ -24,6 +25,12 @@ class LibLuaHandle: public godot::Node{
       public:
         // Get compilation_context of the Library
         get_api_compilation_context get_cc;
+
+        create_library_io_handler_func create_io_handler;
+        delete_library_io_handler_func delete_io_handler;
+
+        create_library_file_handler_func create_file_handler;
+        delete_library_file_handler_func delete_file_handler;
     };
 
   private:

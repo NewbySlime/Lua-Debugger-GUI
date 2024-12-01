@@ -11,5 +11,6 @@
 
 
 #define GDSTR_AS_PRIMITIVE(str) (const char*)str.to_utf8_buffer().ptr()
+#define GDSTR_TO_STDSTR(str) std::string((const char*)str.to_utf8_buffer().ptr(), str.length())
 
 #endif

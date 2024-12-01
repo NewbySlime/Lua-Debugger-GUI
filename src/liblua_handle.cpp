@@ -100,6 +100,10 @@ void LibLuaHandle::_load_library(){
   }
 
   __CHECK_MODULE_FUNCTION(_func_data->get_cc, get_api_compilation_context, CPPLUA_GET_API_COMPILATION_CONTEXT_STR)
+  __CHECK_MODULE_FUNCTION(_func_data->create_io_handler, create_library_io_handler_func, CPPLUA_LIBRARY_CREATE_IO_HANDLER_STR)
+  __CHECK_MODULE_FUNCTION(_func_data->delete_io_handler, delete_library_io_handler_func, CPPLUA_LIBRARY_DELETE_IO_HANDLER_STR)
+  __CHECK_MODULE_FUNCTION(_func_data->create_file_handler, create_library_file_handler_func, CPPLUA_LIBRARY_CREATE_FILE_HANDLER_STR)
+  __CHECK_MODULE_FUNCTION(_func_data->delete_file_handler, delete_library_file_handler_func, CPPLUA_LIBRARY_DELETE_FILE_HANDLER_STR)
 
   if(_function_not_found){
     ErrorTrigger::trigger_error_message("Error occured! Cannot find needed functions for Lua Debugging API, check logs for details.");

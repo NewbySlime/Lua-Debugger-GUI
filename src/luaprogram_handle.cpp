@@ -1,5 +1,6 @@
-#include "console_window.h"
+#include "defines.h"
 #include "error_trigger.h"
+#include "gd_string_store.h"
 #include "logger.h"
 #include "luaprogram_handle.h"
 #include "node_utils.h"
@@ -9,27 +10,34 @@
 #include "godot_cpp/classes/scene_tree.hpp"
 #include "godot_cpp/core/class_db.hpp"
 
+#include "Lua-CPPAPI/Src/error_util.h"
 #include "Lua-CPPAPI/Src/luaapi_debug.h"
 #include "Lua-CPPAPI/Src/luaapi_runtime.h"
 #include "Lua-CPPAPI/Src/luaapi_thread.h"
 #include "Lua-CPPAPI/Src/luaruntime_handler.h"
 #include "Lua-CPPAPI/Src/luavariant_arr.h"
 
+#define MAXIMUM_PIPE_READING_LENGTH 512
 
+
+using namespace error::util;
 using namespace godot;
 using namespace lua;
 using namespace lua::api;
 using namespace lua::debug;
+using namespace lua::library;
 
 
 void LuaProgramHandle::_bind_methods(){
+  ClassDB::bind_method(D_METHOD("append_input", "data"), &LuaProgramHandle::append_input);
+
   ADD_SIGNAL(MethodInfo(SIGNAL_LUA_ON_STARTING));
   ADD_SIGNAL(MethodInfo(SIGNAL_LUA_ON_STOPPING));
   ADD_SIGNAL(MethodInfo(SIGNAL_LUA_ON_PAUSING));
   ADD_SIGNAL(MethodInfo(SIGNAL_LUA_ON_RESUMING));
   ADD_SIGNAL(MethodInfo(SIGNAL_LUA_ON_RESTARTING));
 
-  ADD_SIGNAL(MethodInfo(SIGNAL_LUA_ON_OUTPUT_WRITTEN));
+  ADD_SIGNAL(MethodInfo(SIGNAL_LUA_ON_OUTPUT_WRITTEN, PropertyInfo(Variant::STRING, "output_data")));
 
   ADD_SIGNAL(MethodInfo(SIGNAL_LUA_ON_FILE_LOADED, PropertyInfo(Variant::STRING, "file_path")));
   ADD_SIGNAL(MethodInfo(SIGNAL_LUA_ON_FILE_FOCUS_CHANGED, PropertyInfo(Variant::STRING, "file_path")));
@@ -49,6 +57,8 @@ LuaProgramHandle::LuaProgramHandle(){
   _event_paused = CreateEvent(NULL, TRUE, FALSE, NULL);
 
   _event_read = CreateEvent(NULL, TRUE, FALSE, NULL);
+
+  InitializeCriticalSection(&_output_mutex);
 #endif
 }
 
@@ -61,6 +71,8 @@ LuaProgramHandle::~LuaProgramHandle(){
   CloseHandle(_event_paused);
 
   CloseHandle(_event_read);
+
+  DeleteCriticalSection(&_output_mutex);
 
   DeleteCriticalSection(_obj_mutex_ptr);
 #endif
@@ -84,17 +96,15 @@ void LuaProgramHandle::_unlock_object() const{
 
 int LuaProgramHandle::_load_runtime_handler(const std::string& file_path){
   int _err_code = LUA_OK;
-
-  ConsoleWindow* _console_window = get_any_node<ConsoleWindow>(get_node<Node>("/root"), true);
+  bool _success = true;
 
   _unload_runtime_handler();
 
   _lock_object();
   if(!_lua_lib_data){
-    std::string _err_msg = "[LuaProgramHandle] Lua Debugging API not yet loaded.";
-    GameUtils::Logger::print_err_static(_err_msg.c_str());
-    if(_console_window)
-      _console_window->append_output_buffer("[ERR]" + _err_msg + "\n");
+    String _err_msg = "[LuaProgramHandle] Lua Debugging API not yet loaded.";
+    GameUtils::Logger::print_err_static(_err_msg);
+    emit_signal(SIGNAL_LUA_ON_OUTPUT_WRITTEN, _err_msg);
 
     goto on_error_label;
   }
@@ -111,16 +121,63 @@ int LuaProgramHandle::_load_runtime_handler(const std::string& file_path){
 
 #if (_WIN64) || (_WIN32)
   _print_override->register_event_read(_event_read);
+
+#define _LOAD_RUNTIME_HANDLER_PRINT_WINDOWS_LAST_ERROR(condition) \
+  if(condition){ \
+    String _err_msg = gd_format_str("[LuaProgramHandle] Cannot create Pipe for IO: %s", get_windows_error_message(GetLastError()).c_str()); \
+    GameUtils::Logger::print_err_static(_err_msg); \
+    emit_signal(SIGNAL_LUA_ON_OUTPUT_WRITTEN, _err_msg); \
+     \
+    goto on_error_label; \
+  }
+
+  _success = CreatePipe(&_output_pipe, &_output_pipe_input, NULL, 0);
+  _LOAD_RUNTIME_HANDLER_PRINT_WINDOWS_LAST_ERROR(!_success)
+
+  _success = CreatePipe(&_input_pipe_output, &_input_pipe, NULL, 0);
+  _LOAD_RUNTIME_HANDLER_PRINT_WINDOWS_LAST_ERROR(!_success)
+
+  _output_reader_thread = CreateThread(
+    NULL,
+    0,
+    _output_reader_thread_ep,
+    this,
+    0,
+    NULL
+  );
+
+  file_handler_api_constructor_data _fconstruct_data;
+    _fconstruct_data.lua_core = &_lc;
+    _fconstruct_data.use_pipe = true;
+    
+    _fconstruct_data.is_output = true;
+    _fconstruct_data.pipe_handle = _output_pipe_input;
+  I_file_handler* _output_fhandle = _func_data->create_file_handler(&_fconstruct_data);
+  I_file_handler* _error_fhandle = _func_data->create_file_handler(&_fconstruct_data);
+
+    _fconstruct_data.is_output = false;
+    _fconstruct_data.pipe_handle = _input_pipe_output;
+  I_file_handler* _input_fhandle = _func_data->create_file_handler(&_fconstruct_data);
+
+  I_io_handler::constructor_param _ioconstruct_param;
+    _ioconstruct_param.stdout_file = _output_fhandle;
+    _ioconstruct_param.stderr_file = _error_fhandle;
+    _ioconstruct_param.stdin_file = _input_fhandle;
+  io_handler_api_constructor_data _ioconstruct_data;
+    _ioconstruct_data.lua_core = &_lc;
+    _ioconstruct_data.param = &_ioconstruct_param;
+
+  I_io_handler* _io_handle = _func_data->create_io_handler(&_ioconstruct_data);
+  _runtime_handler->get_library_loader_interface()->load_library("io", _io_handle);
 #endif
 
   if(_err_code != LUA_OK){
     string_store _str;
     _runtime_handler->get_last_error_object()->to_string(&_str);
 
-    std::string _err_msg = format_str("[LuaProgramHandle][Lua] Err %d, %s", _err_code, _str.data.c_str());
-    GameUtils::Logger::print_err_static(_err_msg.c_str());
-    if(_console_window)
-      _console_window->append_output_buffer("[ERR]" + _err_msg + "\n");
+    String _err_msg = gd_format_str("[LuaProgramHandle][Lua] Err %d, %s", _err_code, _str.data.c_str());
+    GameUtils::Logger::print_err_static(_err_msg);
+    emit_signal(SIGNAL_LUA_ON_OUTPUT_WRITTEN, _err_msg);
 
     goto on_error_label;
   }
@@ -156,6 +213,25 @@ void LuaProgramHandle::_unload_runtime_handler(){
     // last, due to the object that instantiate lua_State
     if(_runtime_handler)
       _cc->api_runtime->delete_runtime_handler(_runtime_handler);
+
+#if (_WIN64) || (_WIN32)
+    if(_input_pipe){
+      CloseHandle(_input_pipe);
+      CloseHandle(_input_pipe_output);
+    }
+
+    if(_output_pipe){
+      _output_pipe = NULL;
+      WriteFile(_output_pipe_input, "\0", 1, NULL, NULL);
+
+      CloseHandle(_output_pipe);
+      CloseHandle(_output_pipe_input);
+      
+      WaitForSingleObject(_output_reader_thread, INFINITE);
+      CloseHandle(_output_reader_thread);
+      _output_reader_thread = NULL;
+    }
+#endif
   }
 
   _runtime_handler = NULL;
@@ -163,6 +239,11 @@ void LuaProgramHandle::_unload_runtime_handler(){
   _print_override = NULL;
 
 #if (_WIN64) || (_WIN32)
+  _input_pipe = NULL;
+  _input_pipe_output = NULL;
+  _output_pipe = NULL;
+  _output_pipe_input = NULL;
+
   // event reset just in case
   ResetEvent(_event_stopped);
   ResetEvent(_event_paused);
@@ -184,6 +265,25 @@ void LuaProgramHandle::_init_check(){
     _initialized = false;
 
   _unlock_object();
+}
+
+
+DWORD LuaProgramHandle::_output_reader_thread_ep(LPVOID data){
+  LuaProgramHandle* _this = (LuaProgramHandle*)data;
+
+  // +1 for null-terminating character
+  char _read_buffer[MAXIMUM_PIPE_READING_LENGTH+1];
+
+  while(_this->_output_pipe){
+    DWORD _bytes_read = 0; ReadFile(_this->_output_pipe, _read_buffer, MAXIMUM_PIPE_READING_LENGTH, &_bytes_read, NULL);
+    _read_buffer[_bytes_read] = '\0';
+    
+    EnterCriticalSection(&_this->_output_mutex);
+    _this->_output_reading_buffer += _read_buffer;
+    LeaveCriticalSection(&_this->_output_mutex);
+  }
+
+  return 0;
 }
 
 
@@ -224,8 +324,10 @@ void LuaProgramHandle::_process(double delta){
 #if (_WIN64) || (_WIN32)
   if(WaitForSingleObject(_event_stopped, 0) == WAIT_OBJECT_0){
     if(_execution_code != LUA_OK){
-      ConsoleWindow* _console_window = get_any_node<ConsoleWindow>(get_node<Node>("/root"), true);
-      _console_window->append_output_buffer("[ERR]" + _execution_err_msg + "\n");
+      String _msg = String("[ERR] ") + _execution_err_msg.c_str() + "\n";
+
+      GameUtils::Logger::print_err_static(_msg);
+      emit_signal(SIGNAL_LUA_ON_OUTPUT_WRITTEN, _msg);
     }
 
     ResetEvent(_event_stopped);
@@ -244,8 +346,19 @@ void LuaProgramHandle::_process(double delta){
 
   if(WaitForSingleObject(_event_read, 0) == WAIT_OBJECT_0){
     ResetEvent(_event_read);
-    emit_signal(SIGNAL_LUA_ON_OUTPUT_WRITTEN);
+
+    gd_string_store _str;
+    _print_override->read_all(&_str);
+
+    emit_signal(SIGNAL_LUA_ON_OUTPUT_WRITTEN, _str.data);
   }
+
+  EnterCriticalSection(&_output_mutex);
+  if(_output_reading_buffer.length() > 0){
+    emit_signal(SIGNAL_LUA_ON_OUTPUT_WRITTEN, _output_reading_buffer);
+    _output_reading_buffer = "";
+  }
+  LeaveCriticalSection(&_output_mutex);
 #endif
 
   _unlock_object();
@@ -492,6 +605,14 @@ int LuaProgramHandle::get_current_running_line() const{
   _unlock_object();
 
   return _current_line;
+}
+
+
+void LuaProgramHandle::append_input(godot::String str){
+  if(!_input_pipe)
+    return;
+
+  WriteFile(_input_pipe, GDSTR_AS_PRIMITIVE(str), str.length(), NULL, NULL);
 }
 
 

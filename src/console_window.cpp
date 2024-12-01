@@ -1,4 +1,5 @@
 #include "console_window.h"
+#include "defines.h"
 #include "error_trigger.h"
 #include "logger.h"
 
@@ -17,11 +18,18 @@ using namespace lua::global;
 
 
 void ConsoleWindow::_bind_methods(){
-  ClassDB::bind_method(D_METHOD("_on_output_written"), &ConsoleWindow::_on_output_written);
+  ClassDB::bind_method(D_METHOD("_on_output_written", "output_data"), &ConsoleWindow::_on_output_written);
+  ClassDB::bind_method(D_METHOD("_on_input_entered", "input_data"), &ConsoleWindow::_on_input_entered);
 
   ClassDB::bind_method(D_METHOD("get_output_text_path"), &ConsoleWindow::get_output_text_path);
   ClassDB::bind_method(D_METHOD("set_output_text_path", "path"), &ConsoleWindow::set_output_text_path);
   ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "output_text_path"), "set_output_text_path", "get_output_text_path");
+
+  ClassDB::bind_method(D_METHOD("get_input_text_path"), &ConsoleWindow::get_input_text_path);
+  ClassDB::bind_method(D_METHOD("set_input_text_path"), &ConsoleWindow::set_input_text_path);
+  ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "input_text_path"), "set_input_text_path", "get_input_text_path");
+
+  ADD_SIGNAL(MethodInfo(SIGNAL_CONSOLE_ON_INPUT_ENTERED, PropertyInfo(Variant::STRING, "input_data")));
 }
 
 
@@ -36,22 +44,20 @@ ConsoleWindow::~ConsoleWindow(){
 }
 
 
-void ConsoleWindow::_on_output_written(){
+void ConsoleWindow::_on_output_written(godot::String str){
   _program_handle->lock_object();
-
-{ // enclosure for using gotos
-  I_print_override* _print_override = _program_handle->get_print_override();
-  if(!_print_override)
-    goto skip_to_return;
-    
-  string_store _str; _print_override->read_all(&_str);
-
-  _add_string_to_output_buffer(_str.data);
+  _add_string_to_output_buffer(GDSTR_TO_STDSTR(str));
   _write_to_output_text();
-} // enclosure closing
-
-  skip_to_return:{}
   _program_handle->unlock_object();
+}
+
+void ConsoleWindow::_on_input_entered(String str){
+  str += "\n";
+
+  append_output_buffer("> " + GDSTR_TO_STDSTR(str));
+  emit_signal(SIGNAL_CONSOLE_ON_INPUT_ENTERED, str);
+
+  _input_text->set_text("");
 }
 
 
@@ -117,7 +123,7 @@ void ConsoleWindow::_ready(){
 
   _program_handle = get_node<LuaProgramHandle>("/root/GlobalLuaProgramHandle");
   if(!_program_handle){
-    GameUtils::Logger::print_err_static("[LuaProgramHandle] Cannot get Program Handle for Lua.");
+    GameUtils::Logger::print_err_static("[ConsoleWindow] Cannot get Program Handle for Lua.");
 
     _quit_code = ERR_UNAVAILABLE;
     goto on_error_label;
@@ -125,15 +131,26 @@ void ConsoleWindow::_ready(){
 
   _output_text = get_node<TextEdit>(_output_text_path);
   if(!_output_text){
-    GameUtils::Logger::print_err_static("[LuaProgramHandle] Cannot get TextEdit for Console Output.");
+    GameUtils::Logger::print_err_static("[ConsoleWindow] Cannot get TextEdit for Console Output.");
 
     _quit_code = ERR_UNCONFIGURED;
     goto on_error_label;
   }
 
+  _input_text = get_node<LineEdit>(_input_text_path);
+  if(!_input_text){
+    GameUtils::Logger::print_err_static("[ConsoleWindow] Cannot get LineEdit for Console Input.");
+    
+    _quit_code = ERR_UNCONFIGURED;
+    goto on_error_label;
+  }
+
+  connect(SIGNAL_CONSOLE_ON_INPUT_ENTERED, Callable(_program_handle, "append_input"));
   _program_handle->connect(SIGNAL_LUA_ON_OUTPUT_WRITTEN, Callable(this, "_on_output_written"));
+  _input_text->connect("text_submitted", Callable(this, "_on_input_entered"));
 
   _output_text->set_text("");
+  _input_text->set_text("");
 
   return;
 
@@ -164,4 +181,13 @@ NodePath ConsoleWindow::get_output_text_path() const{
 
 void ConsoleWindow::set_output_text_path(NodePath path){
   _output_text_path = path;
+}
+
+
+NodePath ConsoleWindow::get_input_text_path() const{
+  return _input_text_path;
+}
+
+void ConsoleWindow::set_input_text_path(NodePath path){
+  _input_text_path = path;
 }

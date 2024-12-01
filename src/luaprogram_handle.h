@@ -5,6 +5,7 @@
 
 #include "godot_cpp/classes/node.hpp"
 
+#include "Lua-CPPAPI/Src/lualibrary_iohandler.h"
 #include "Lua-CPPAPI/Src/luathread_control.h"
 
 
@@ -45,9 +46,19 @@ class LuaProgramHandle: public godot::Node{
 
     HANDLE _event_read;
 
+    HANDLE _output_reader_thread = NULL;
+    HANDLE _output_pipe = NULL;
+    HANDLE _output_pipe_input = NULL;
+    CRITICAL_SECTION _output_mutex;
+
+    HANDLE _input_pipe = NULL;
+    HANDLE _input_pipe_output = NULL;
+
     CRITICAL_SECTION* _obj_mutex_ptr;
     CRITICAL_SECTION _obj_mutex;
 #endif
+
+    godot::String _output_reading_buffer;
 
     std::string _current_file_path;
 
@@ -61,6 +72,11 @@ class LuaProgramHandle: public godot::Node{
     void _unload_runtime_handler();
 
     void _init_check();
+
+#if (_WIN64) || (_WIN32)
+    static DWORD _output_reader_thread_ep(LPVOID data);
+    static DWORD _print_reader_thread_ep(LPVOID data);
+#endif
 
   protected:
     static void _bind_methods();
@@ -94,6 +110,8 @@ class LuaProgramHandle: public godot::Node{
     std::string get_current_function() const;
     // only updated when paused
     int get_current_running_line() const;
+
+    void append_input(godot::String str);
 
     // Use this when accessing API objects, as the objects might be freed when the program is stopping. 
     void lock_object() const;
