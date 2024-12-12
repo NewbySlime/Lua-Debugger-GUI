@@ -15,15 +15,15 @@ This is a part of a project: [Lua-Debug-API](https://github.com/NewbySlime/Lua-D
 ## How To Use
 Open the program, then
 Open the target Lua source code
-![Open Program](README-Asset/open-program.mp4)
+![Open Program](README-Asset/open-program.gif)
 
 Run it!
-![Run File](README-Asset/run-file.mp4)
+![Run File](README-Asset/run-file.gif)
 
 Debug options will be available when running the source code
 
 Use Console Window to give input to Lua
-![Console Input](README-Asset/console-input.mp4)
+![Console Input](README-Asset/console-input.gif)
 
 ## Building
 Run the makefile in src/lua_api.make, the instruction are almost the same with Lua-Debug-API. Since the makefile is modified, suited for this build case, we'll have to slightly change how we build.
