@@ -2,7 +2,9 @@
 
 OUTPUT_FILE= unit_test.exe
 
-OPTIONAL_DELETE_FILE= "../../godot_workspace/bin/*.dll" "../../godot_workspace/bin/*.lib"
+OPTIONAL_DELETE_FILE= "../../godot_workspace/bin/*release*.dll" "../../godot_workspace/bin/*release*.lib"
+OPTIONAL_DEBUG_DELETE_FILE= "../../godot_workspace/bin/*debug*.dll" "../../godot_workspace/bin/*debug*.lib"
+
 
 DLL_OUTPUT_FILE= ../../godot_workspace/bin/CPPAPI.dll
 STATIC_DLIB_OUTPUT_FILE = ../../godot_workspace/bin/CPPAPI_static.lib
@@ -216,6 +218,16 @@ define _compile_as_dll
 endef
 
 
+define _delete_build_files
+	$(eval _LIBRARY_DELETE_FILES=$(OPTIONAL_DELETE_FILE))
+  $(if $(call cmp_str,$(AS_DEBUG),TRUE),
+    $(eval _LIBRARY_DELETE_FILES=$(OPTIONAL_DEBUG_DELETE_FILE))
+  )
+
+	$(call delete_objects,*$(COMPILED_OBJECT_EXT) $(_LIBRARY_DELETE_FILES))
+endef
+
+
 
 _f_update_compiler:
 	$(call update_compiler_data)
@@ -235,8 +247,8 @@ f_as_debug:
 
 
 proc_compile: _f_update_compiler
-	$(call delete_objects,*$(COMPILED_OBJECT_EXT) $(OPTIONAL_DELETE_FILE))
-
+	$(call _delete_build_files)
+	
 	$(call _compile_as_dll)
 
 	$(call delete_objects,*$(COMPILED_OBJECT_EXT))
