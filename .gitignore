@@ -1,3 +1,8 @@
+/.ignore
 /.vscode
+
 *.exp
 *.obj
+*.dll
+*.lib
+*.pdb
