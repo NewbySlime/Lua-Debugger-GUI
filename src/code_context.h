@@ -24,6 +24,8 @@ class CodeContext: public godot::Control{
 
     bool _initialized = false;
 
+    std::vector<int> _breakpointed_list;
+
 
     void _breakpoint_toggled_cb(int line);
 
@@ -47,6 +49,11 @@ class CodeContext: public godot::Control{
 
     void set_breakpoint_line(int line, bool flag);
     void clear_breakpoints();
+
+    // get breakpoint based on index
+    int get_breakpoint_line(int idx);
+    long get_breakpoint_counts();
+    const std::vector<int>* get_breakpoint_list();
 
     void set_executing_line(int line, bool flag);
     void clear_executing_lines();

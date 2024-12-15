@@ -9,6 +9,7 @@
 #include "Lua-CPPAPI/Src/luathread_control.h"
 
 
+#define SIGNAL_LUA_ON_THREAD_STARTING "on_thread_starting"
 #define SIGNAL_LUA_ON_STARTING "on_starting"
 #define SIGNAL_LUA_ON_STOPPING "on_stopping"
 #define SIGNAL_LUA_ON_PAUSING "on_pausing"

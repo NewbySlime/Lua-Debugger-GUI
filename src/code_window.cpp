@@ -6,6 +6,9 @@
 #include "node_utils.h"
 #include "strutil.h"
 
+#include "Lua-CPPAPI/Src/luaapi_thread.h"
+#include "Lua-CPPAPI/Src/luaapi_debug.h"
+
 #include "godot_cpp/classes/engine.hpp"
 #include "godot_cpp/classes/os.hpp"
 #include "godot_cpp/classes/resource_loader.hpp"
@@ -41,6 +44,8 @@ void CodeWindow::_bind_methods(){
 
   ClassDB::bind_method(D_METHOD("_on_context_menu_button_pressed", "button_type"), &CodeWindow::_on_context_menu_button_pressed);
 
+  ClassDB::bind_method(D_METHOD("_on_thread_initialized"), &CodeWindow::_on_thread_initialized);
+
   ADD_SIGNAL(MethodInfo(SIGNAL_CODE_WINDOW_FILE_LOADED, PropertyInfo(Variant::STRING, "file_path")));
   ADD_SIGNAL(MethodInfo(SIGNAL_CODE_WINDOW_FILE_CLOSED, PropertyInfo(Variant::STRING, "file_path")));
   ADD_SIGNAL(MethodInfo(SIGNAL_CODE_WINDOW_FOCUS_SWITCHED));
@@ -74,16 +79,28 @@ void CodeWindow::_on_breakpoint_added(int line, uint64_t id){
   auto _iter = _context_map.find(id);
   if(_iter == _context_map.end())
     return;
+
+  std::string _file_path = _iter->second->get_current_file_path();
+  if(_program_handle->is_running()){
+    lua::I_thread_handle* _tref = _program_handle->get_main_thread()->get_interface();
+    _tref->get_execution_flow_interface()->add_breakpoint(_file_path.c_str(), line+1);
+  }
     
-  emit_signal(SIGNAL_CODE_WINDOW_BREAKPOINT_ADDED, String(_iter->second->get_current_file_path().c_str()), Variant(line));
+  emit_signal(SIGNAL_CODE_WINDOW_BREAKPOINT_ADDED, String(_file_path.c_str()), Variant(line));
 }
 
 void CodeWindow::_on_breakpoint_removed(int line, uint64_t id){
   auto _iter = _context_map.find(id);
   if(_iter == _context_map.end())
     return;
-    
-  emit_signal(SIGNAL_CODE_WINDOW_BREAKPOINT_REMOVED, String(_iter->second->get_current_file_path().c_str()), Variant(line));
+
+  std::string _file_path = _iter->second->get_current_file_path();
+  if(_program_handle->is_running()){
+    lua::I_thread_handle* _tref = _program_handle->get_main_thread()->get_interface();
+    _tref->get_execution_flow_interface()->remove_breakpoint(_file_path.c_str(), line+1);
+  }
+
+  emit_signal(SIGNAL_CODE_WINDOW_BREAKPOINT_REMOVED, String(_file_path.c_str()), Variant(line));
 }
 
 
@@ -215,6 +232,18 @@ bool CodeWindow::_delete_path_node(const std::string& file_path){
 }
 
 
+void CodeWindow::_on_thread_initialized(){
+  lua::I_thread_handle* _tref = _program_handle->get_main_thread()->get_interface();
+  lua::debug::I_execution_flow* _exec_flow = _tref->get_execution_flow_interface();
+  for(auto _pair: _context_map){
+    std::string _file_path = _pair.second->get_current_file_path();
+    const std::vector<int>* _breakpoint_list = _pair.second->get_breakpoint_list();
+    for(auto _biter: *_breakpoint_list)
+      _exec_flow->add_breakpoint(_file_path.c_str(), _biter+1);
+  }
+}
+
+
 void CodeWindow::_ready(){
   Engine* _engine = Engine::get_singleton();
   if(_engine->is_editor_hint())
@@ -277,6 +306,7 @@ void CodeWindow::_ready(){
     _child_node->queue_free();
   }
 
+  _program_handle->connect(SIGNAL_LUA_ON_THREAD_STARTING, Callable(this, "_on_thread_initialized"));
   _program_handle->connect(SIGNAL_LUA_ON_STARTING, Callable(this, "_lua_on_started"));
   _program_handle->connect(SIGNAL_LUA_ON_PAUSING, Callable(this, "_lua_on_paused"));
   _program_handle->connect(SIGNAL_LUA_ON_STOPPING, Callable(this, "_lua_on_stopped"));

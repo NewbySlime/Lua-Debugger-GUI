@@ -31,6 +31,7 @@ using namespace lua::library;
 void LuaProgramHandle::_bind_methods(){
   ClassDB::bind_method(D_METHOD("append_input", "data"), &LuaProgramHandle::append_input);
 
+  ADD_SIGNAL(MethodInfo(SIGNAL_LUA_ON_THREAD_STARTING));
   ADD_SIGNAL(MethodInfo(SIGNAL_LUA_ON_STARTING));
   ADD_SIGNAL(MethodInfo(SIGNAL_LUA_ON_STOPPING));
   ADD_SIGNAL(MethodInfo(SIGNAL_LUA_ON_PAUSING));
@@ -411,11 +412,15 @@ void LuaProgramHandle::start_lua(){
     LuaProgramHandle* _this;
     const compilation_context* _cc;
 #if (_WIN64) || (_WIN32)
+    HANDLE thread_initiated_event;
+    HANDLE thread_initiated_finish_event;
     HANDLE finished_initiating_event;
 #endif
   };
 
 #if (_WIN64) || (_WIN32)
+  HANDLE _started_allow_event = CreateEvent(NULL, false, false, NULL);
+  HANDLE _started_finish_event = CreateEvent(NULL, false, false, NULL);
   HANDLE _wait_event = CreateMutex(NULL, false, NULL);
 #endif
 
@@ -423,6 +428,8 @@ void LuaProgramHandle::start_lua(){
     _data._this = this;
     _data._cc = _lua_lib_data->get_function_data()->get_cc();
 #if (_WIN64) || (_WIN32)
+    _data.thread_initiated_event = _started_allow_event;
+    _data.thread_initiated_finish_event = _started_finish_event;
     _data.finished_initiating_event = _wait_event;
 #endif
 
@@ -439,6 +446,13 @@ void LuaProgramHandle::start_lua(){
     _d._this->_variable_watcher = _d._cc->api_debug->create_variable_watcher(_thread_handle->get_lua_state_interface());
 
     I_execution_flow* _execution_flow = _thread_handle->get_execution_flow_interface();
+
+    _d._this->_unlock_object();
+#if (_WIN64) || (_WIN32)
+    SetEvent(_d.thread_initiated_event);
+    WaitForSingleObject(_d.thread_initiated_finish_event, INFINITE);
+#endif
+    _d._this->_lock_object();
     
     if(_d._this->_blocking_on_start)
       _execution_flow->block_execution();
@@ -483,6 +497,12 @@ void LuaProgramHandle::start_lua(){
 #endif
     _d._this->_unlock_object();
   }, &_data);
+
+#if (_WIN64) || (_WIN32)
+  WaitForSingleObject(_started_allow_event, INFINITE);
+  emit_signal(SIGNAL_LUA_ON_THREAD_STARTING);
+  SetEvent(_started_finish_event);
+#endif
 
 #if (_WIN64) || (_WIN32)
   WaitForSingleObject(_wait_event, INFINITE);

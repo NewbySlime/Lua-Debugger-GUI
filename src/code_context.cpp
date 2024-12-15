@@ -8,6 +8,8 @@
 #include "godot_cpp/core/class_db.hpp"
 #include "godot_cpp/core/math.hpp"
 
+#include "algorithm"
+
 #pragma comment(lib, "comdlg32.lib")
 
 using namespace godot;
@@ -37,10 +39,19 @@ CodeContext::~CodeContext(){
 
 
 void CodeContext::_breakpoint_toggled_cb(int line){
-  if(_code_edit->is_line_breakpointed(line))
+  if(_code_edit->is_line_breakpointed(line)){
+    _breakpointed_list.insert(_breakpointed_list.end(), line);
+    std::sort(_breakpointed_list.begin(), _breakpointed_list.end());
+
     emit_signal(SIGNAL_CODE_CONTEXT_BREAKPOINT_ADDED, Variant(line), Variant(get_instance_id()));
-  else
+  }
+  else{
+    auto _iter = std::search_n(_breakpointed_list.begin(), _breakpointed_list.end(), 1, line);
+    if(_iter != _breakpointed_list.end())
+      _breakpointed_list.erase(_iter);
+
     emit_signal(SIGNAL_CODE_CONTEXT_BREAKPOINT_REMOVED, Variant(line), Variant(get_instance_id()));
+  }
 }
 
 
@@ -129,6 +140,22 @@ void CodeContext::clear_breakpoints(){
   PackedInt32Array _int_array = _code_edit->get_breakpointed_lines();
   for(int i = 0; i < _int_array.size(); i++)
     set_breakpoint_line(_int_array[i], false);
+}
+
+
+int CodeContext::get_breakpoint_line(int idx){
+  if(idx < 0 || _breakpointed_list.size() >= idx)
+    return -1;
+
+  return _breakpointed_list[idx];
+}
+
+long CodeContext::get_breakpoint_counts(){
+  return _breakpointed_list.size();
+}
+
+const std::vector<int>* CodeContext::get_breakpoint_list(){
+  return &_breakpointed_list;
 }
 
 

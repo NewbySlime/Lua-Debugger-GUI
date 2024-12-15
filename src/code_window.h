@@ -74,6 +74,8 @@ class CodeWindow: public godot::TabContainer{
     _path_node* _create_path_node(const std::string& file_path);
     // This only handle deleting node, CodeContext excluded
     bool _delete_path_node(const std::string& file_path);
+
+    void _on_thread_initialized();
   
   protected:
     static void _bind_methods();
