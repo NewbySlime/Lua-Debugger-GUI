@@ -19,20 +19,28 @@
 
 
 
-using namespace godot;
-
-
 namespace GameUtils{
   class Logger: public godot::Node, public GameUtils::I_logger{
   GDCLASS(Logger, godot::Node)
+
+    public:
+      // Param:
+      //  - STRING: the Log message
+      static const char* s_on_log;
+      // Param:
+      //  - STRING: the Log message
+      static const char* s_on_warn_log;
+      // Param:
+      //  - STRING: the Log message
+      static const char* s_on_error_log;
 
     private:
 #ifdef _WIN64
       HANDLE _log_mutex;
 #endif
 
-    private:
-      static String _get_current_time();
+      static godot::String _get_current_time();
+      static godot::String _log_formatting(const char* flag, const godot::String& msg);
 
     protected:
       static void _bind_methods();
@@ -45,15 +53,15 @@ namespace GameUtils{
 
       static Logger *get_static_logger();
 
-      static void print_log_static(const String &log);
-      static void print_warn_static(const String &warning);
-      static void print_err_static(const String &err);
+      static void print_log_static(const godot::String &log);
+      static void print_warn_static(const godot::String &warning);
+      static void print_err_static(const godot::String &err);
 
-      void print_log(const String &log);
-      void print_warn(const String &warning);
-      void print_err(const String &err);
+      void print_log(const godot::String &log);
+      void print_warn(const godot::String &warning);
+      void print_err(const godot::String &err);
 
-      void print(I_logger::std_type type, const String &msg);
+      void print(I_logger::std_type type, const godot::String &msg);
       void print(I_logger::std_type type, const char* msg) override;
   };
 }

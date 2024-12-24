@@ -32,8 +32,8 @@ class VariableWatcher: public godot::Control{
     void _lua_on_resuming();
     void _lua_on_stopping();
 
-    void _update_tree_item(TreeItem* parent_item, lua::debug::I_variable_watcher* watcher);
-    void _update_tree_item(TreeItem* parent_item, lua::I_table_var* var);
+    void _update_tree_item(godot::TreeItem* parent_item, lua::debug::I_variable_watcher* watcher);
+    void _update_tree_item(godot::TreeItem* parent_item, lua::I_table_var* var);
 
     void _update_variable_tree();
     void _clear_variable_tree();

@@ -28,20 +28,31 @@ using namespace lua::debug;
 using namespace lua::library;
 
 
+const char* LuaProgramHandle::s_thread_starting = "thread_starting";
+const char* LuaProgramHandle::s_starting = "starting";
+const char* LuaProgramHandle::s_stopping = "stopping";
+const char* LuaProgramHandle::s_pausing = "pausing";
+const char* LuaProgramHandle::s_resuming = "resuming";
+const char* LuaProgramHandle::s_restarting = "restarting";
+
+const char* LuaProgramHandle::s_file_loaded = "file_loaded";
+const char* LuaProgramHandle::s_file_focus_changed = "file_focus_changed";
+
+
 void LuaProgramHandle::_bind_methods(){
+  ClassDB::bind_method(D_METHOD("_on_stop_warn_timer_timeout"), &LuaProgramHandle::_on_stop_warn_timer_timeout);
+
   ClassDB::bind_method(D_METHOD("append_input", "data"), &LuaProgramHandle::append_input);
 
-  ADD_SIGNAL(MethodInfo(SIGNAL_LUA_ON_THREAD_STARTING));
-  ADD_SIGNAL(MethodInfo(SIGNAL_LUA_ON_STARTING));
-  ADD_SIGNAL(MethodInfo(SIGNAL_LUA_ON_STOPPING));
-  ADD_SIGNAL(MethodInfo(SIGNAL_LUA_ON_PAUSING));
-  ADD_SIGNAL(MethodInfo(SIGNAL_LUA_ON_RESUMING));
-  ADD_SIGNAL(MethodInfo(SIGNAL_LUA_ON_RESTARTING));
+  ADD_SIGNAL(MethodInfo(s_thread_starting));
+  ADD_SIGNAL(MethodInfo(s_starting));
+  ADD_SIGNAL(MethodInfo(s_stopping));
+  ADD_SIGNAL(MethodInfo(s_pausing));
+  ADD_SIGNAL(MethodInfo(s_resuming));
+  ADD_SIGNAL(MethodInfo(s_restarting));
 
-  ADD_SIGNAL(MethodInfo(SIGNAL_LUA_ON_OUTPUT_WRITTEN, PropertyInfo(Variant::STRING, "output_data")));
-
-  ADD_SIGNAL(MethodInfo(SIGNAL_LUA_ON_FILE_LOADED, PropertyInfo(Variant::STRING, "file_path")));
-  ADD_SIGNAL(MethodInfo(SIGNAL_LUA_ON_FILE_FOCUS_CHANGED, PropertyInfo(Variant::STRING, "file_path")));
+  ADD_SIGNAL(MethodInfo(s_file_loaded, PropertyInfo(Variant::STRING, "file_path")));
+  ADD_SIGNAL(MethodInfo(s_file_focus_changed, PropertyInfo(Variant::STRING, "file_path")));
 }
 
 
@@ -64,6 +75,9 @@ LuaProgramHandle::LuaProgramHandle(){
 }
 
 LuaProgramHandle::~LuaProgramHandle(){
+  if(is_running())
+    _thread_handle->get_interface()->stop_running();
+
   _unload_runtime_handler();
 
 #if (_WIN64) || (_WIN32)
@@ -105,12 +119,13 @@ int LuaProgramHandle::_load_runtime_handler(const std::string& file_path){
   if(!_lua_lib_data){
     String _err_msg = "[LuaProgramHandle] Lua Debugging API not yet loaded.";
     GameUtils::Logger::print_err_static(_err_msg);
-    emit_signal(SIGNAL_LUA_ON_OUTPUT_WRITTEN, _err_msg);
 
     goto on_error_label;
   }
 
 { // enclosure for using gotos
+  _current_file_path = file_path;
+
   const LibLuaHandle::function_data* _func_data = _lua_lib_data->get_function_data();
   const compilation_context* _cc = _func_data->get_cc();
   
@@ -127,7 +142,6 @@ int LuaProgramHandle::_load_runtime_handler(const std::string& file_path){
   if(condition){ \
     String _err_msg = gd_format_str("[LuaProgramHandle] Cannot create Pipe for IO: %s", get_windows_error_message(GetLastError()).c_str()); \
     GameUtils::Logger::print_err_static(_err_msg); \
-    emit_signal(SIGNAL_LUA_ON_OUTPUT_WRITTEN, _err_msg); \
      \
     goto on_error_label; \
   }
@@ -185,16 +199,15 @@ int LuaProgramHandle::_load_runtime_handler(const std::string& file_path){
     string_store _str;
     _runtime_handler->get_last_error_object()->to_string(&_str);
 
-    String _err_msg = gd_format_str("[LuaProgramHandle][Lua] Err %d, %s", _err_code, _str.data.c_str());
+    String _err_msg = format_str("[LuaProgramHandle][Lua] Err %d, %s", _err_code, _str.data.c_str()).c_str();
     GameUtils::Logger::print_err_static(_err_msg);
-    emit_signal(SIGNAL_LUA_ON_OUTPUT_WRITTEN, _err_msg);
 
     goto on_error_label;
   }
 
   _current_file_path = file_path;
 
-  emit_signal(SIGNAL_LUA_ON_FILE_LOADED, String(file_path.c_str()));
+  emit_signal(s_file_loaded, String(file_path.c_str()));
 } // enclosure closing
 
   _unlock_object();
@@ -208,9 +221,6 @@ int LuaProgramHandle::_load_runtime_handler(const std::string& file_path){
 }
 
 void LuaProgramHandle::_unload_runtime_handler(){
-  if(is_running())
-    stop_lua();
-
   _lock_object();
 
   if(_lua_lib_data != NULL){
@@ -284,6 +294,62 @@ void LuaProgramHandle::_init_check(){
     _initialized = false;
 
   _unlock_object();
+}
+
+
+void LuaProgramHandle::_try_stop(on_stop_callback cb){
+  if(!is_running())
+    return;
+
+  _create_stop_timer();
+
+  resume_lua();
+  _thread_handle->get_interface()->signal_stop();
+
+  _on_stopping_cb = cb;
+}
+
+void LuaProgramHandle::_create_stop_timer(){
+  _stop_warn_timer = get_tree()->create_timer(_stop_warn_time);
+  _stop_warn_timer->connect("timeout", Callable(this, "_on_stop_warn_timer_timeout"));
+}
+
+void LuaProgramHandle::_stop_stop_timer(){
+  if(!_stop_warn_timer.is_valid())
+    return;
+
+  _stop_warn_timer->disconnect("timeout", Callable(this, "_on_stop_warn_timer_timeout"));
+  _stop_warn_timer.unref();
+}
+
+
+void LuaProgramHandle::_on_stop_warn_timer_timeout(){
+  GameUtils::Logger::print_warn_static("Cannot stop runtime, might be suspended (ex. IO request).");
+  _create_stop_timer();
+}
+
+void LuaProgramHandle::_on_stopped(){
+  _stop_stop_timer();
+
+  // reset events
+  ResetEvent(_event_paused);
+  ResetEvent(_event_resumed);
+  ResetEvent(_event_stopped);
+
+  _unload_runtime_handler();
+
+  emit_signal(s_stopping);
+
+  if(_on_stopping_cb){
+    std::invoke(_on_stopping_cb, this);
+    _on_stopping_cb = NULL;
+  }
+}
+
+
+void LuaProgramHandle::_on_stopped_restart(){
+  start_lua(_current_file_path);
+  emit_signal(s_restarting);
 }
 
 
@@ -366,26 +432,27 @@ void LuaProgramHandle::_process(double delta){
       String _msg = String("[ERR] ") + _execution_err_msg.c_str() + "\n";
 
       GameUtils::Logger::print_err_static(_msg);
-      emit_signal(SIGNAL_LUA_ON_OUTPUT_WRITTEN, _msg);
     }
 
-    ResetEvent(_event_stopped);
-    emit_signal(SIGNAL_LUA_ON_STOPPING);
+    // to allow some callback to start a lua code
+    _unlock_object();
+    _on_stopped();
+    _lock_object();
   }
 
   if(WaitForSingleObject(_event_resumed, 0) == WAIT_OBJECT_0){
     ResetEvent(_event_resumed);
-    emit_signal(SIGNAL_LUA_ON_RESUMING);
+    emit_signal(s_resuming);
   }
 
   if(WaitForSingleObject(_event_paused, 0) == WAIT_OBJECT_0){
     ResetEvent(_event_paused);
-    emit_signal(SIGNAL_LUA_ON_PAUSING);
+    emit_signal(s_pausing);
   }
 
   EnterCriticalSection(&_output_mutex);
   if(_output_reading_buffer.length() > 0){
-    emit_signal(SIGNAL_LUA_ON_OUTPUT_WRITTEN, _output_reading_buffer);
+    GameUtils::Logger::print_log_static(_output_reading_buffer);
     _output_reading_buffer = "";
   }
   LeaveCriticalSection(&_output_mutex);
@@ -395,18 +462,11 @@ void LuaProgramHandle::_process(double delta){
 }
 
 
-int LuaProgramHandle::load_file(const std::string& file_path){
-  return _load_runtime_handler(file_path);
-}
-
-int LuaProgramHandle::reload_file(){
-  return load_file(_current_file_path);
-}
-
-
-void LuaProgramHandle::start_lua(){  
+void LuaProgramHandle::start_lua(const std::string& file_path){
   if(is_running())
     return;
+
+  _load_runtime_handler(file_path);
 
   struct _execution_data{
     LuaProgramHandle* _this;
@@ -500,7 +560,7 @@ void LuaProgramHandle::start_lua(){
 
 #if (_WIN64) || (_WIN32)
   WaitForSingleObject(_started_allow_event, INFINITE);
-  emit_signal(SIGNAL_LUA_ON_THREAD_STARTING);
+  emit_signal(s_thread_starting);
   SetEvent(_started_finish_event);
 #endif
 
@@ -509,39 +569,34 @@ void LuaProgramHandle::start_lua(){
   CloseHandle(_wait_event);
 #endif
 
-  emit_signal(SIGNAL_LUA_ON_STARTING);
+  emit_signal(s_starting);
 }
 
 void LuaProgramHandle::stop_lua(){
   if(!is_running())
     return;
 
-  _thread_handle->get_interface()->stop_running();
-  
-  // reset events
-  ResetEvent(_event_paused);
-  ResetEvent(_event_resumed);
-  ResetEvent(_event_stopped);
-
-  emit_signal(SIGNAL_LUA_ON_STOPPING);
+  _try_stop();
 }
 
 void LuaProgramHandle::restart_lua(){
-  if(!_runtime_handler)
+  if(!is_running())
     return;
 
-  stop_lua();
-
-  reload_file();
-  start_lua();
-
-  emit_signal(SIGNAL_LUA_ON_RESTARTING);
+  _try_stop(&LuaProgramHandle::_on_stopped_restart);
 }
 
 
 bool LuaProgramHandle::is_running() const{
+  if(!is_loaded())
+    return false;
+
   // _thread_handle is automatically set to NULL if the thread is stopped
-  return _runtime_handler && _thread_handle;
+  return _thread_handle;
+}
+
+bool LuaProgramHandle::is_loaded() const{
+  return _runtime_handler;
 }
 
 

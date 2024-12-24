@@ -205,9 +205,9 @@ void VariableWatcher::_ready(){
 
   _lua_lib_data = _lua_lib->get_library_store();
 
-  _lua_program_handle->connect(SIGNAL_LUA_ON_PAUSING, Callable(this, "_lua_on_pausing"));
-  _lua_program_handle->connect(SIGNAL_LUA_ON_RESUMING, Callable(this, "_lua_on_resuming"));
-  _lua_program_handle->connect(SIGNAL_LUA_ON_STOPPING, Callable(this, "_lua_on_stopping"));
+  _lua_program_handle->connect(LuaProgramHandle::s_pausing, Callable(this, "_lua_on_pausing"));
+  _lua_program_handle->connect(LuaProgramHandle::s_resuming, Callable(this, "_lua_on_resuming"));
+  _lua_program_handle->connect(LuaProgramHandle::s_stopping, Callable(this, "_lua_on_stopping"));
 
   _clear_variable_tree();
 

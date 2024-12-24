@@ -1,4 +1,5 @@
 #include "code_window.h"
+#include "common_event.h"
 #include "defines.h"
 #include "directory_util.h"
 #include "error_trigger.h"
@@ -6,11 +7,13 @@
 #include "node_utils.h"
 #include "strutil.h"
 
+
 #include "Lua-CPPAPI/Src/luaapi_thread.h"
 #include "Lua-CPPAPI/Src/luaapi_debug.h"
 
 #include "godot_cpp/classes/engine.hpp"
 #include "godot_cpp/classes/os.hpp"
+#include "godot_cpp/classes/project_settings.hpp"
 #include "godot_cpp/classes/resource_loader.hpp"
 #include "godot_cpp/classes/scene_tree.hpp"
 #include "godot_cpp/core/class_db.hpp"
@@ -25,6 +28,15 @@ using namespace godot;
 #endif
 
 
+const char* CodeWindow::s_file_loaded = "file_loaded";
+const char* CodeWindow::s_file_closed = "file_closed";
+const char* CodeWindow::s_focus_switched = "focus_switched";
+const char* CodeWindow::s_breakpoint_added = "breakpoint_added";
+const char* CodeWindow::s_breakpoint_removed = "breakpoint_removed";
+const char* CodeWindow::s_code_opened = "code_opened";
+const char* CodeWindow::s_code_cannot_open = "code_cannot_open";
+
+
 void CodeWindow::_bind_methods(){
   ClassDB::bind_method(D_METHOD("get_code_context_scene_path"), &CodeWindow::get_code_context_scene_path);
   ClassDB::bind_method(D_METHOD("set_code_context_scene_path", "scene"), &CodeWindow::set_code_context_scene_path);
@@ -37,6 +49,7 @@ void CodeWindow::_bind_methods(){
   ClassDB::bind_method(D_METHOD("_on_file_loaded", "file_path"), &CodeWindow::_on_file_loaded);
   ClassDB::bind_method(D_METHOD("_on_breakpoint_added", "line", "id"), &CodeWindow::_on_breakpoint_added);
   ClassDB::bind_method(D_METHOD("_on_breakpoint_removed", "line", "id"), &CodeWindow::_on_breakpoint_removed);
+  ClassDB::bind_method(D_METHOD("_on_file_cannot_open", "file_path", "error_code"), &CodeWindow::_on_file_cannot_open);
 
   ClassDB::bind_method(D_METHOD("_lua_on_started"), &CodeWindow::_lua_on_started);
   ClassDB::bind_method(D_METHOD("_lua_on_paused"), &CodeWindow::_lua_on_paused);
@@ -44,13 +57,16 @@ void CodeWindow::_bind_methods(){
 
   ClassDB::bind_method(D_METHOD("_on_context_menu_button_pressed", "button_type"), &CodeWindow::_on_context_menu_button_pressed);
 
+  ClassDB::bind_method(D_METHOD("_on_code_context_menu_ready_event", "obj"), &CodeWindow::_on_code_context_menu_ready_event);
+
   ClassDB::bind_method(D_METHOD("_on_thread_initialized"), &CodeWindow::_on_thread_initialized);
 
-  ADD_SIGNAL(MethodInfo(SIGNAL_CODE_WINDOW_FILE_LOADED, PropertyInfo(Variant::STRING, "file_path")));
-  ADD_SIGNAL(MethodInfo(SIGNAL_CODE_WINDOW_FILE_CLOSED, PropertyInfo(Variant::STRING, "file_path")));
-  ADD_SIGNAL(MethodInfo(SIGNAL_CODE_WINDOW_FOCUS_SWITCHED));
-  ADD_SIGNAL(MethodInfo(SIGNAL_CODE_WINDOW_BREAKPOINT_ADDED, PropertyInfo(Variant::STRING, "file_path"), PropertyInfo(Variant::INT, "line")));
-  ADD_SIGNAL(MethodInfo(SIGNAL_CODE_WINDOW_BREAKPOINT_REMOVED, PropertyInfo(Variant::STRING, "file_path"), PropertyInfo(Variant::INT, "line")));
+  ADD_SIGNAL(MethodInfo(s_file_loaded, PropertyInfo(Variant::STRING, "file_path")));
+  ADD_SIGNAL(MethodInfo(s_file_closed, PropertyInfo(Variant::STRING, "file_path")));
+  ADD_SIGNAL(MethodInfo(s_focus_switched));
+  ADD_SIGNAL(MethodInfo(s_breakpoint_added, PropertyInfo(Variant::STRING, "file_path"), PropertyInfo(Variant::INT, "line")));
+  ADD_SIGNAL(MethodInfo(s_breakpoint_removed, PropertyInfo(Variant::STRING, "file_path"), PropertyInfo(Variant::INT, "line")));
+  ADD_SIGNAL(MethodInfo(s_code_opened, PropertyInfo(Variant::STRING, "file_path")));
 }
 
 
@@ -72,7 +88,19 @@ void CodeWindow::_recursive_delete(_path_node* node){
 
 
 void CodeWindow::_on_file_loaded(String file_path){
-  emit_signal(SIGNAL_CODE_WINDOW_FILE_LOADED, String(file_path));
+  std::string _std_file_path = GDSTR_TO_STDSTR(file_path);
+  _path_node* _node = _get_path_node(_std_file_path);
+  if(!_node)
+    return;
+
+  emit_signal(s_file_loaded, String(file_path));
+
+  int _tab_index = _node->_code_node->get_index();
+  set_current_tab(_tab_index);
+  set_tab_title(_tab_index, DirectoryUtil::strip_path(_std_file_path).c_str());
+  emit_signal(s_focus_switched);
+
+  _update_context_button_visibility();
 }
 
 void CodeWindow::_on_breakpoint_added(int line, uint64_t id){
@@ -86,7 +114,7 @@ void CodeWindow::_on_breakpoint_added(int line, uint64_t id){
     _tref->get_execution_flow_interface()->add_breakpoint(_file_path.c_str(), line+1);
   }
     
-  emit_signal(SIGNAL_CODE_WINDOW_BREAKPOINT_ADDED, String(_file_path.c_str()), Variant(line));
+  emit_signal(s_breakpoint_added, String(_file_path.c_str()), Variant(line));
 }
 
 void CodeWindow::_on_breakpoint_removed(int line, uint64_t id){
@@ -100,7 +128,15 @@ void CodeWindow::_on_breakpoint_removed(int line, uint64_t id){
     _tref->get_execution_flow_interface()->remove_breakpoint(_file_path.c_str(), line+1);
   }
 
-  emit_signal(SIGNAL_CODE_WINDOW_BREAKPOINT_REMOVED, String(_file_path.c_str()), Variant(line));
+  emit_signal(s_breakpoint_removed, String(_file_path.c_str()), Variant(line));
+}
+
+void CodeWindow::_on_file_cannot_open(String file_path, int error_code){
+  std::string _std_file_path = GDSTR_TO_STDSTR(file_path);
+  std::string _err_msg = format_str("[CodeWindow] Cannot open file. Error Code: %d", error_code);
+  GameUtils::Logger::print_err_static(_err_msg.c_str());
+
+  close_code_context(_std_file_path);
 }
 
 
@@ -112,15 +148,13 @@ void CodeWindow::_lua_on_paused(){
   std::string _fname = _program_handle->get_current_running_file();
   int _line_code = _program_handle->get_current_running_line();
 
-  if(_fname.size() < 1)
+  if(_fname.size() <= 0)
     return;
 
   _path_node* _node = _get_path_node(_fname);
   if(!_node){
-    if(!open_code_context(_fname))
-      return;
-    
-    _node = _get_path_node(_fname);
+    open_code_context(_fname);
+    return;
   }
 
   set_current_tab(_node->_code_node->get_index());
@@ -170,8 +204,9 @@ void CodeWindow::_update_context_button_visibility(){
 }
 
 
-CodeWindow::_path_node* CodeWindow::_get_path_node(const std::string& file_path){
-  std::vector<std::string> _split_data; DirectoryUtil::split_directory_string(file_path, _split_data);
+CodeWindow::_path_node* CodeWindow:: _get_path_node(const std::string& file_path){
+  std::string _mfile_path = DirectoryUtil::get_absolute_path(file_path);
+  std::vector<std::string> _split_data; DirectoryUtil::split_directory_string(_mfile_path, _split_data);
 
   _path_node* _node = _path_code_root;
   for(int i = 0; i < _split_data.size(); i++){
@@ -190,7 +225,8 @@ CodeWindow::_path_node* CodeWindow::_get_path_node(const std::string& file_path)
 
 
 CodeWindow::_path_node* CodeWindow::_create_path_node(const std::string& file_path){
-  std::vector<std::string> _split_data; DirectoryUtil::split_directory_string(file_path, _split_data);
+  std::string _mfile_path = DirectoryUtil::get_absolute_path(file_path);
+  std::vector<std::string> _split_data; DirectoryUtil::split_directory_string(_mfile_path, _split_data);
 
   _path_node* _node = _path_code_root;
   for(int i = 0; i < _split_data.size(); i++){
@@ -232,6 +268,21 @@ bool CodeWindow::_delete_path_node(const std::string& file_path){
 }
 
 
+void CodeWindow::_on_code_context_menu_ready(CodeContextMenu* obj){
+  obj->connect(CodeContextMenu::s_button_pressed, Callable(this, "_on_context_menu_button_pressed"));
+  _update_context_button_visibility();
+
+  _context_menu_node_init = true;
+}
+
+void CodeWindow::_on_code_context_menu_ready_event(Object* obj){
+  if(!obj->is_class(CodeContextMenu::get_class_static()))
+    return;
+
+  _on_code_context_menu_ready((CodeContextMenu*)obj);
+}
+
+
 void CodeWindow::_on_thread_initialized(){
   lua::I_thread_handle* _tref = _program_handle->get_main_thread()->get_interface();
   lua::debug::I_execution_flow* _exec_flow = _tref->get_execution_flow_interface();
@@ -258,7 +309,6 @@ void CodeWindow::_ready(){
 
   _initial_prompt_path = DirectoryUtil::strip_filename(_exe_path);
 
-
   _program_handle = get_node<LuaProgramHandle>("/root/GlobalLuaProgramHandle");
   if(!_program_handle){
     GameUtils::Logger::print_err_static("[CodeWindow] Cannot get Node for Program Handle for Lua.");
@@ -267,8 +317,6 @@ void CodeWindow::_ready(){
     goto on_error_label;
   }
 
-  _console_window = get_any_node<ConsoleWindow>(get_node<Node>("/root"), true);
-
   _context_menu_node = get_node<CodeContextMenu>(_context_menu_path);
   if(!_context_menu_node){
     GameUtils::Logger::print_err_static("[CodeWindow] Cannot get Node for Context Menu.");
@@ -276,6 +324,10 @@ void CodeWindow::_ready(){
     _quit_code = ERR_UNCONFIGURED;
     goto on_error_label;
   }
+
+  _context_menu_node->connect(SIGNAL_ON_READY, Callable(this, "_on_code_context_menu_ready_event"));
+  if(_context_menu_node->is_initialized())
+    _on_code_context_menu_ready(_context_menu_node);
 
   _code_context_scene = ResourceLoader::get_singleton()->load(_code_context_scene_path);
   if(_code_context_scene == NULL){
@@ -306,14 +358,12 @@ void CodeWindow::_ready(){
     _child_node->queue_free();
   }
 
-  _program_handle->connect(SIGNAL_LUA_ON_THREAD_STARTING, Callable(this, "_on_thread_initialized"));
-  _program_handle->connect(SIGNAL_LUA_ON_STARTING, Callable(this, "_lua_on_started"));
-  _program_handle->connect(SIGNAL_LUA_ON_PAUSING, Callable(this, "_lua_on_paused"));
-  _program_handle->connect(SIGNAL_LUA_ON_STOPPING, Callable(this, "_lua_on_stopped"));
+  _program_handle->connect(LuaProgramHandle::s_thread_starting, Callable(this, "_on_thread_initialized"));
+  _program_handle->connect(LuaProgramHandle::s_starting, Callable(this, "_lua_on_started"));
+  _program_handle->connect(LuaProgramHandle::s_pausing, Callable(this, "_lua_on_paused"));
+  _program_handle->connect(LuaProgramHandle::s_stopping, Callable(this, "_lua_on_stopped"));
 
-  // _context_menu_node binding handled in _process
-
-  // _initialized handled in _process
+  _initialized = true;
   return;
 
 
@@ -324,32 +374,11 @@ void CodeWindow::_ready(){
   return;}
 }
 
-void CodeWindow::_process(double delta){
-  Engine* _engine = Engine::get_singleton();
-  if(_engine->is_editor_hint())
-    return;
-
-  if(!_initialized){
-    _initialized = true;
-
-    if(!_context_menu_node->is_initialized())
-      _initialized = false;
-    else if(!_context_menu_node_init){
-      _context_menu_node_init = true;
-
-      _context_menu_node->connect(SIGNAL_CODE_CONTEXT_MENU_BUTTON_PRESSED, Callable(this, "_on_context_menu_button_pressed"));
-      _update_context_button_visibility();
-    }
-  }
-}
-
 
 void CodeWindow::change_focus_code_context(const std::string& file_path){
   _path_node* _node = _get_path_node(file_path);
   if(!_node){
-    if(open_code_context(file_path));
-      change_focus_code_context(file_path);
-
+    open_code_context(file_path);
     return;
   }
 
@@ -359,7 +388,7 @@ void CodeWindow::change_focus_code_context(const std::string& file_path){
   }
 
   set_current_tab(_node->_code_node->get_index());
-  emit_signal(SIGNAL_CODE_WINDOW_FOCUS_SWITCHED);
+  emit_signal(s_focus_switched);
 }
 
 
@@ -404,41 +433,30 @@ void CodeWindow::open_code_context(){
   open_code_context(_file_path_buffer);
 }
 
-bool CodeWindow::open_code_context(const std::string& file_path){
+void CodeWindow::open_code_context(const std::string& file_path){
   {CodeContext* _test_node = get_code_context(file_path);
     if(_test_node){
       change_focus_code_context(file_path);
-      return true;
+      emit_signal(s_code_opened);
+      return;
     }
   }
 
   CodeContext* _inst_node = (CodeContext*)_code_context_scene->instantiate();
-  godot::Error _err = _inst_node->load_file(file_path);
-  if(_err != OK){
-    std::string _err_msg = format_str("Cannot open file. Error Code: %d", _err);
-    _console_window->append_output_buffer("[ERR] " + _err_msg + "\n");
-
-    _inst_node->queue_free();
-    return false;
-  }
-
-  _inst_node->connect(SIGNAL_CODE_CONTEXT_FILE_LOADED, Callable(this,"_on_file_loaded"));
-  _inst_node->connect(SIGNAL_CODE_CONTEXT_BREAKPOINT_ADDED, Callable(this, "_on_breakpoint_added"));
-  _inst_node->connect(SIGNAL_CODE_CONTEXT_BREAKPOINT_REMOVED, Callable(this, "_on_breakpoint_removed"));
-
-  add_child(_inst_node);
-  set_current_tab(get_child_count()-1);
-  set_tab_title(get_child_count()-1, DirectoryUtil::strip_path(file_path).c_str());
-  emit_signal(SIGNAL_CODE_WINDOW_FOCUS_SWITCHED);
 
   _path_node* _pnode = _create_path_node(file_path);
   _pnode->_code_node = _inst_node;
 
   _context_map[_inst_node->get_instance_id()] = _inst_node;
 
-  _update_context_button_visibility();
+  _inst_node->connect(CodeContext::s_file_loaded, Callable(this,"_on_file_loaded"));
+  _inst_node->connect(CodeContext::s_breakpoint_added, Callable(this, "_on_breakpoint_added"));
+  _inst_node->connect(CodeContext::s_breakpoint_removed, Callable(this, "_on_breakpoint_removed"));
+  _inst_node->connect(CodeContext::s_cannot_load, Callable(this, "_on_file_cannot_open"));
 
-  return true;
+  add_child(_inst_node);
+
+  _inst_node->load_file(file_path);
 }
 
 
@@ -449,7 +467,7 @@ bool CodeWindow::close_current_code_context(){
 
   _delete_path_node(_code->get_current_file_path());
 
-  emit_signal(SIGNAL_CODE_WINDOW_FILE_CLOSED, String(_code->get_current_file_path().c_str()));
+  emit_signal(s_file_closed, String(_code->get_current_file_path().c_str()));
 
   // tab switching handled by godot
   remove_child(_code);
@@ -469,7 +487,7 @@ bool CodeWindow::close_code_context(const std::string& file_path){
 
   _delete_path_node(file_path);
 
-  emit_signal(SIGNAL_CODE_WINDOW_FILE_CLOSED, String(file_path.c_str()));
+  emit_signal(s_file_closed, String(file_path.c_str()));
 
   // tab switching handled by godot
   remove_child(_code);
@@ -485,8 +503,7 @@ bool CodeWindow::close_code_context(const std::string& file_path){
 
 void CodeWindow::run_current_code_context(){
   CodeContext* _code = get_current_code_context();
-  _program_handle->load_file(_code->get_current_file_path()); 
-  _program_handle->start_lua();
+  _program_handle->start_lua(_code->get_current_file_path());
 }
 
 

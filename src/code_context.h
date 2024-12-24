@@ -1,18 +1,32 @@
 #ifndef CODE_CONTEXT_HEADER
 #define CODE_CONTEXT_HEADER
 
+#include "liblua_handle.h"
+
 #include "godot_cpp/classes/code_edit.hpp"
 #include "godot_cpp/classes/control.hpp"
 #include "godot_cpp/classes/scroll_container.hpp"
 
 
-#define SIGNAL_CODE_CONTEXT_FILE_LOADED "file_loaded"
-#define SIGNAL_CODE_CONTEXT_BREAKPOINT_ADDED "breakpoint_added"
-#define SIGNAL_CODE_CONTEXT_BREAKPOINT_REMOVED "breakpoint_removed"
-
-
 class CodeContext: public godot::Control{
   GDCLASS(CodeContext, godot::Control)
+
+  public:
+    // Param:
+    //  - STRING: file_path
+    static const char* s_file_loaded;
+    // Param:
+    //  - STRING: file_path
+    //  - INT: error_code
+    static const char* s_cannot_load;
+    // Param:
+    //  - INT: idx
+    //  - INT: obj_id
+    static const char* s_breakpoint_added;
+    // Param:
+    //  - INT: idx
+    //  - INT: obj_id
+    static const char* s_breakpoint_removed;
 
   private:
     godot::NodePath _code_edit_path;
@@ -20,14 +34,22 @@ class CodeContext: public godot::Control{
 
     std::string _current_file_path;
 
-    godot::String _tmp_file_data;
-
     bool _initialized = false;
+    bool _skip_breakpoint_toggled_event = false;
 
     std::vector<int> _breakpointed_list;
 
+    std::vector<long> _valid_lines;
+
+    std::shared_ptr<LibLuaStore> _lib_store;
+
 
     void _breakpoint_toggled_cb(int line);
+
+    // if return -1, no valid line that can be used as a backup
+    long _check_valid_line(long check_line);
+
+    void _load_file_check(bool retain_breakpoints = false);
 
   protected:
     static void _bind_methods();
@@ -38,8 +60,10 @@ class CodeContext: public godot::Control{
 
     void _ready() override;
 
-    godot::Error load_file(const std::string& file_path);
-    godot::Error reload_file();
+    // listen to s_cannot_load when an error happens
+    void load_file(const std::string& file_path);
+    // listen to s_cannot_load when an error happens
+    void reload_file();
     std::string get_current_file_path() const;
 
     godot::String get_line_at(int line) const;
@@ -62,7 +86,6 @@ class CodeContext: public godot::Control{
     godot::NodePath get_code_edit_path() const;
 
     bool is_initialized() const;
-
 };
 
 #endif

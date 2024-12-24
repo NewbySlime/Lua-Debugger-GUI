@@ -108,10 +108,10 @@ void ExecutionContext::_ready(){
 
   _clear_execution_info();
 
-  _program_handle->connect(SIGNAL_LUA_ON_STARTING, Callable(this, "_on_lua_starting"));
-  _program_handle->connect(SIGNAL_LUA_ON_STOPPING, Callable(this, "_on_lua_stopping"));
-  _program_handle->connect(SIGNAL_LUA_ON_PAUSING, Callable(this, "_on_lua_pausing"));
-  _program_handle->connect(SIGNAL_LUA_ON_RESUMING, Callable(this, "_on_lua_resuming"));
+  _program_handle->connect(LuaProgramHandle::s_starting, Callable(this, "_on_lua_starting"));
+  _program_handle->connect(LuaProgramHandle::s_stopping, Callable(this, "_on_lua_stopping"));
+  _program_handle->connect(LuaProgramHandle::s_pausing, Callable(this, "_on_lua_pausing"));
+  _program_handle->connect(LuaProgramHandle::s_resuming, Callable(this, "_on_lua_resuming"));
 
   return;
 

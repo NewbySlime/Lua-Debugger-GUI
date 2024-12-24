@@ -5,13 +5,14 @@
 #include "godot_cpp/classes/control.hpp"
 
 
-#define SIGNAL_CODE_CONTEXT_MENU_BUTTON_PRESSED "button_pressed"
-
-
 class CodeContextMenu: public godot::Control{
   GDCLASS(CodeContextMenu, godot::Control)
 
   public:
+    // Param:
+    //  - INT: button_enum
+    static const char* s_button_pressed;
+
     enum button_enum{
       be_opening    = 0b1,
       be_closing    = 0b10,

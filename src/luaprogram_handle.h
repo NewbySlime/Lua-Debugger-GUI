@@ -4,28 +4,34 @@
 #include "liblua_handle.h"
 
 #include "godot_cpp/classes/node.hpp"
+#include "godot_cpp/classes/scene_tree_timer.hpp"
 
 #include "Lua-CPPAPI/Src/lualibrary_iohandler.h"
 #include "Lua-CPPAPI/Src/luathread_control.h"
 
 
-#define SIGNAL_LUA_ON_THREAD_STARTING "on_thread_starting"
-#define SIGNAL_LUA_ON_STARTING "on_starting"
-#define SIGNAL_LUA_ON_STOPPING "on_stopping"
-#define SIGNAL_LUA_ON_PAUSING "on_pausing"
-#define SIGNAL_LUA_ON_RESUMING "on_resuming"
-#define SIGNAL_LUA_ON_RESTARTING "on_restarting"
-
-#define SIGNAL_LUA_ON_OUTPUT_WRITTEN "output_written"
-
-#define SIGNAL_LUA_ON_FILE_LOADED "file_loaded"
-#define SIGNAL_LUA_ON_FILE_FOCUS_CHANGED "file_focus_changed"
-
 
 class LuaProgramHandle: public godot::Node{
   GDCLASS(LuaProgramHandle, godot::Node)
 
+  public:
+    static const char* s_thread_starting;
+    static const char* s_starting;
+    static const char* s_stopping;
+    static const char* s_pausing;
+    static const char* s_resuming;
+    static const char* s_restarting;
+
+    // Param:
+    //  - STRING: file_path
+    static const char* s_file_loaded;
+    // Param:
+    //  - STRING: file_path
+    static const char* s_file_focus_changed;
+
   private:
+    typedef void(LuaProgramHandle::*on_stop_callback)();
+
     LibLuaHandle* _lua_lib;
     std::shared_ptr<LibLuaStore> _lua_lib_data;
 
@@ -64,7 +70,13 @@ class LuaProgramHandle: public godot::Node{
 
     godot::String _output_reading_buffer;
 
+    godot::Ref<godot::SceneTreeTimer> _stop_warn_timer = NULL;
+    // TODO expose to editor
+    float _stop_warn_time = 3;
+
     std::string _current_file_path;
+
+    on_stop_callback _on_stopping_cb = NULL;
 
     bool _blocking_on_start = true;
     bool _initialized = false;
@@ -73,9 +85,19 @@ class LuaProgramHandle: public godot::Node{
     void _unlock_object() const;
 
     int _load_runtime_handler(const std::string& file_path);
+    // will not handle stopping the handler
     void _unload_runtime_handler();
 
     void _init_check();
+
+    void _try_stop(on_stop_callback cb = NULL);
+    void _create_stop_timer();
+    void _stop_stop_timer();
+
+    void _on_stop_warn_timer_timeout();
+    void _on_stopped();
+
+    void _on_stopped_restart();
 
 #if (_WIN64) || (_WIN32)
     static DWORD _output_reader_thread_ep(LPVOID data);
@@ -91,15 +113,14 @@ class LuaProgramHandle: public godot::Node{
 
     void _ready() override;
     void _process(double delta) override;
-
-    int load_file(const std::string& file_path);
-    int reload_file();
     
-    void start_lua();
+    void start_lua(const std::string& file_path);
+    // async function, wait for s_stopping if needed
     void stop_lua();
     void restart_lua();
 
     bool is_running() const;
+    bool is_loaded() const;
 
     void resume_lua();
     void pause_lua();

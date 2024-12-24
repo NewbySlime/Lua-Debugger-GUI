@@ -1,5 +1,6 @@
 #include "defines.h"
 #include "logger.h"
+#include "strutil.h"
 
 #include "chrono"
 
@@ -8,27 +9,31 @@
 
 #include "godot_cpp/variant/utility_functions.hpp"
 
+using namespace GameUtils;
+using namespace godot;
+
 
 // 0: Time string (HH-MM-SS)
 // 1: msec string
-#define TIME_STRING_FORMAT String("[{0}.{1}]")
+#define TIME_STRING_FORMAT "[{0}.{1}]"
+
+#define LOGGING_FLAG "[INF]"
+#define WARNING_FLAG "[WRN]"
+#define ERROR_FLAG "[ERR]"
 
 
-#define LOGGING_FLAG String("[INF]")
-#define WARNING_FLAG String("[WRN]")
-#define ERROR_FLAG String("[ERR]")
-
-
-
-using namespace GameUtils;
+const char* Logger::s_on_log = "msg_log";
+const char* Logger::s_on_warn_log = "warn_msg_log";
+const char* Logger::s_on_error_log = "error_msg_log";
 
 
 Logger *_static_logger_obj = NULL;
 
 
-
 void Logger::_bind_methods(){
-
+  ADD_SIGNAL(MethodInfo(s_on_log, PropertyInfo(Variant::STRING, "msg")));
+  ADD_SIGNAL(MethodInfo(s_on_warn_log, PropertyInfo(Variant::STRING, "msg")));
+  ADD_SIGNAL(MethodInfo(s_on_error_log, PropertyInfo(Variant::STRING, "msg")));
 }
 
 
@@ -51,15 +56,17 @@ String Logger::_get_current_time(){
   Time *_time_obj = Time::get_singleton();
   auto _currtime = system_clock::now().time_since_epoch();
 
-  auto _time_str = _time_obj->get_time_string_from_system();
-  auto _time_milli = duration_cast<milliseconds>(_currtime).count() % 1000;
+  String _gd_time_str = _time_obj->get_time_string_from_system();
+  long long _time_milli = duration_cast<milliseconds>(_currtime).count() % 1000;
 
-  Array _paramarr;{
-    _paramarr.append(_time_str);
-    _paramarr.append(_time_milli);
-  }
-  return TIME_STRING_FORMAT.format(_paramarr);
+  return gd_format_str(TIME_STRING_FORMAT, _gd_time_str, _time_milli);
 }
+
+String Logger::_log_formatting(const char* flag, const String& msg){
+  String _curr_time = _get_current_time();
+  return gd_format_str("{0}{1}: {2}", flag, _curr_time, msg);
+}
+
 
 void Logger::_ready(){
   _static_logger_obj = this;
@@ -93,19 +100,34 @@ void Logger::print_err_static(const String &err){
 
 void Logger::print_log(const String &log){
   __LOCK_MUTEX(_log_mutex);
-  UtilityFunctions::print(LOGGING_FLAG, _get_current_time(), log);
+  String _msg = _log_formatting(LOGGING_FLAG, log);
+  UtilityFunctions::print(_msg);
+
+  if(!_msg.ends_with("\n"))
+    _msg += "\n";
+  emit_signal(s_on_log, _msg);
   __RELEASE_MUTEX(_log_mutex);
 }
 
 void Logger::print_warn(const String &warning){
   __LOCK_MUTEX(_log_mutex);
-  UtilityFunctions::print(WARNING_FLAG, _get_current_time(), warning);
+  String _msg = _log_formatting(WARNING_FLAG, warning);
+  UtilityFunctions::print(_msg);
+
+  if(!_msg.ends_with("\n"))
+    _msg += "\n";
+  emit_signal(s_on_warn_log, _msg);
   __RELEASE_MUTEX(_log_mutex); 
 }
 
 void Logger::print_err(const String &err){
   __LOCK_MUTEX(_log_mutex);
-  UtilityFunctions::printerr(ERROR_FLAG, _get_current_time(), err);
+  String _msg = _log_formatting(ERROR_FLAG, err);
+  UtilityFunctions::print(_msg);
+
+  if(!_msg.ends_with("\n"))
+    _msg += "\n";
+  emit_signal(s_on_error_log, _msg);
   __RELEASE_MUTEX(_log_mutex);
 }
 

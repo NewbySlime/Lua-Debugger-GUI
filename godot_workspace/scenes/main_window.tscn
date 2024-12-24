@@ -321,8 +321,11 @@ text = "Function _test | Line 21"
 vertical_alignment = 1
 
 [node name="ConsoleWindow" type="ConsoleWindow" parent="VSplitContainer"]
-output_text_path = NodePath("VBoxContainer/ConsoleMargin/ConsoleText")
+output_text_path = NodePath("VBoxContainer/ConsoleMargin/RichTextLabel")
 input_text_path = NodePath("VBoxContainer/InputMargin/HBoxContainer/InputText")
+log_color = Color(0.753984, 0.753984, 0.753984, 1)
+warn_color = Color(0.902972, 0.655383, 3.85046e-07, 1)
+err_color = Color(0.925218, 0, 0.0756133, 1)
 custom_minimum_size = Vector2(0, 200)
 layout_mode = 2
 
@@ -346,17 +349,17 @@ grow_vertical = 2
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
 theme_override_constants/margin_right = 10
 
-[node name="ConsoleText" type="TextEdit" parent="VSplitContainer/ConsoleWindow/VBoxContainer/ConsoleMargin"]
+[node name="RichTextLabel" type="RichTextLabel" parent="VSplitContainer/ConsoleWindow/VBoxContainer/ConsoleMargin"]
 layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_fonts/font = ExtResource("1_n2lrs")
+theme_override_fonts/normal_font = ExtResource("1_n2lrs")
 theme_override_styles/normal = SubResource("StyleBoxEmpty_j6ujq")
-placeholder_text = "Console Window"
-editable = false
-wrap_mode = 1
-autowrap_mode = 1
+bbcode_enabled = true
+autowrap_mode = 2
 
 [node name="InputMargin" type="MarginContainer" parent="VSplitContainer/ConsoleWindow/VBoxContainer"]
 layout_mode = 2

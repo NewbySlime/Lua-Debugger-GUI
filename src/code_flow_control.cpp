@@ -50,6 +50,7 @@ CodeFlowControl::~CodeFlowControl(){
 
 void CodeFlowControl::_on_restart_button_pressed(){
   _program_handle->restart_lua();
+  disable_button(be_stop | be_restart, true);
 }
 
 void CodeFlowControl::_on_resume_button_pressed(){
@@ -84,6 +85,7 @@ void CodeFlowControl::_on_step_over_button_pressed(){
 
 void CodeFlowControl::_on_stop_button_pressed(){
   _program_handle->stop_lua();
+  disable_button(be_stop | be_restart, true);
 }
 
 
@@ -187,10 +189,10 @@ void CodeFlowControl::_ready(){
   FETCH_BUTTON(_step_over_button, BUTTON_STEP_OVER_NODE_NAME)
   FETCH_BUTTON(_stop_button, BUTTON_STOP_NODE_NAME)
 
-  _program_handle->connect(SIGNAL_LUA_ON_STARTING, Callable(this, "_lua_on_starting"));
-  _program_handle->connect(SIGNAL_LUA_ON_STOPPING, Callable(this, "_lua_on_stopping"));
-  _program_handle->connect(SIGNAL_LUA_ON_PAUSING, Callable(this, "_lua_on_pausing"));
-  _program_handle->connect(SIGNAL_LUA_ON_RESUMING, Callable(this, "_lua_on_resuming"));
+  _program_handle->connect(LuaProgramHandle::s_starting, Callable(this, "_lua_on_starting"));
+  _program_handle->connect(LuaProgramHandle::s_stopping, Callable(this, "_lua_on_stopping"));
+  _program_handle->connect(LuaProgramHandle::s_pausing, Callable(this, "_lua_on_pausing"));
+  _program_handle->connect(LuaProgramHandle::s_resuming, Callable(this, "_lua_on_resuming"));
 
   _restart_button->connect("pressed", Callable(this, "_on_restart_button_pressed"));
   _resume_button->connect("pressed", Callable(this, "_on_resume_button_pressed"));

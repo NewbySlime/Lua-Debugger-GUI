@@ -1,4 +1,5 @@
 #include "code_context_menu.h"
+#include "common_event.h"
 #include "error_trigger.h"
 #include "logger.h"
 
@@ -16,6 +17,9 @@ using namespace godot;
 #define BUTTON_REFRESH_NODE_NAME "ButtonRefresh"
 
 
+const char* CodeContextMenu::s_button_pressed = "button_pressed";
+
+
 void CodeContextMenu::_bind_methods(){
   ClassDB::bind_method(D_METHOD("_opening_button_pressed"), &CodeContextMenu::_opening_button_pressed);
   ClassDB::bind_method(D_METHOD("_closing_button_pressed"), &CodeContextMenu::_closing_button_pressed);
@@ -26,7 +30,8 @@ void CodeContextMenu::_bind_methods(){
   ClassDB::bind_method(D_METHOD("set_button_container_path", "path"), &CodeContextMenu::set_button_container_path);
   ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "button_container_path"), "set_button_container_path", "get_button_container_path");
 
-  ADD_SIGNAL(MethodInfo(SIGNAL_CODE_CONTEXT_MENU_BUTTON_PRESSED, PropertyInfo(Variant::INT, "button_enum")));
+  ADD_SIGNAL(MethodInfo(s_button_pressed, PropertyInfo(Variant::INT, "button_enum")));
+  ADD_SIGNAL(MethodInfo(SIGNAL_ON_READY, PropertyInfo(Variant::OBJECT, "obj")));
 }
 
 
@@ -40,19 +45,19 @@ CodeContextMenu::~CodeContextMenu(){
 
 
 void CodeContextMenu::_opening_button_pressed(){
-  emit_signal(SIGNAL_CODE_CONTEXT_MENU_BUTTON_PRESSED, Variant(be_opening));
+  emit_signal(s_button_pressed, Variant(be_opening));
 }
 
 void CodeContextMenu::_closing_button_pressed(){
-  emit_signal(SIGNAL_CODE_CONTEXT_MENU_BUTTON_PRESSED, Variant(be_closing));
+  emit_signal(s_button_pressed, Variant(be_closing));
 }
 
 void CodeContextMenu::_running_button_pressed(){
-  emit_signal(SIGNAL_CODE_CONTEXT_MENU_BUTTON_PRESSED, Variant(be_running));
+  emit_signal(s_button_pressed, Variant(be_running));
 }
 
 void CodeContextMenu::_refresh_button_pressed(){
-  emit_signal(SIGNAL_CODE_CONTEXT_MENU_BUTTON_PRESSED, Variant(be_refresh));
+  emit_signal(s_button_pressed, Variant(be_refresh));
 }
 
 
@@ -110,6 +115,8 @@ void CodeContextMenu::_ready(){
   _refresh_button->connect("pressed", Callable(this, "_refresh_button_pressed"));
 
   _initialized = true;
+
+  emit_signal(SIGNAL_ON_READY, this);
   return;
 
   on_error_label:{
