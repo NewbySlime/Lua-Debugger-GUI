@@ -35,9 +35,9 @@ void ConsoleWindow::_bind_methods(){
   ClassDB::bind_method(D_METHOD("set_input_text_path"), &ConsoleWindow::set_input_text_path);
   ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "input_text_path"), "set_input_text_path", "get_input_text_path");
 
-  ClassDB::bind_method(D_METHOD("_on_log", "msg"), &ConsoleWindow::_on_log);
-  ClassDB::bind_method(D_METHOD("_on_log_warn", "msg"), &ConsoleWindow::_on_log_warn);
-  ClassDB::bind_method(D_METHOD("_on_log_err", "msg"), &ConsoleWindow::_on_log_err);
+  ClassDB::bind_method(D_METHOD("_on_log", "msg_info", "msg"), &ConsoleWindow::_on_log);
+  ClassDB::bind_method(D_METHOD("_on_log_warn", "msg_info", "msg"), &ConsoleWindow::_on_log_warn);
+  ClassDB::bind_method(D_METHOD("_on_log_err", "msg_info", "msg"), &ConsoleWindow::_on_log_err);
 
   ClassDB::bind_method(D_METHOD("get_log_color"), &ConsoleWindow::get_log_color);
   ClassDB::bind_method(D_METHOD("set_log_color", "color"), &ConsoleWindow::set_log_color);
@@ -65,18 +65,30 @@ ConsoleWindow::~ConsoleWindow(){
 }
 
 
-void ConsoleWindow::_on_log(const String& str){
-  String _newstr = _wrap_color(str, _log_color);
+void ConsoleWindow::_on_log(const String& msg_info, const String& str){
+  String _str = str;
+  if(!_str.ends_with("\n"))
+    _str += "\n";
+
+  String _newstr = _wrap_color(_str, _log_color);
   append_output_buffer(GDSTR_TO_STDSTR(_newstr));
 }
 
-void ConsoleWindow::_on_log_warn(const String& str){
-  String _newstr = _wrap_color(str, _warn_color);
+void ConsoleWindow::_on_log_warn(const String& msg_info, const String& str){
+  String _str = gd_format_str("{0}: {1}", msg_info, str);
+  if(!_str.ends_with("\n"))
+    _str += "\n";
+
+  String _newstr = _wrap_color(_str, _warn_color);
   append_output_buffer(GDSTR_TO_STDSTR(_newstr));
 }
 
-void ConsoleWindow::_on_log_err(const String& str){
-  String _newstr = _wrap_color(str, _err_color);
+void ConsoleWindow::_on_log_err(const String& msg_info, const String& str){
+  String _str = gd_format_str("{0}: {1}", msg_info, str);
+  if(!_str.ends_with("\n"))
+    _str += "\n";
+
+  String _newstr = _wrap_color(_str, _err_color);
   append_output_buffer(GDSTR_TO_STDSTR(_newstr));
 }
 

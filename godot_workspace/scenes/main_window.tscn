@@ -1,4 +1,4 @@
-[gd_scene load_steps=20 format=3 uid="uid://cgjecodaf2s77"]
+[gd_scene load_steps=31 format=3 uid="uid://cgjecodaf2s77"]
 
 [ext_resource type="PackedScene" uid="uid://bbpgcr0g21epu" path="res://scenes/clone/code_context.tscn" id="1_b2mtp"]
 [ext_resource type="SystemFont" uid="uid://c8jm14y54ky2t" path="res://resource/styles/text/code_font.tres" id="1_n2lrs"]
@@ -13,6 +13,8 @@
 [ext_resource type="Texture2D" uid="uid://dtlb5xa15xrtr" path="res://resource/images/logo/StepOverLogo.png" id="10_gesx8"]
 [ext_resource type="Texture2D" uid="uid://y5rx4xwwk3ng" path="res://resource/images/logo/StopLogo.png" id="11_qgwsp"]
 [ext_resource type="Texture2D" uid="uid://b6ymps4xmwpr0" path="res://resource/images/logo/RestartLogo.png" id="12_ifwq8"]
+[ext_resource type="Texture2D" uid="uid://df7qxoobafca8" path="res://resource/images/logo/SettingsLogo.png" id="14_dify4"]
+[ext_resource type="Texture2D" uid="uid://d060ofcipcuyv" path="res://resource/images/logo/SettingsBackLogo.png" id="15_o08uj"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1wdwd"]
 bg_color = Color(0.113379, 0.195545, 0.293532, 1)
@@ -39,6 +41,116 @@ font_size = 14
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_j6ujq"]
 
+[sub_resource type="Animation" id="Animation_mm0tu"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:slide_value")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [0.0]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("../../UnfocusArea:ignore_focus")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [true]
+}
+
+[sub_resource type="Animation" id="Animation_1mtd0"]
+resource_name = "slide_animation"
+length = 0.5
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:slide_value")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.5),
+"transitions": PackedFloat32Array(0.2, 0.2),
+"update": 0,
+"values": [0.0, 1.0]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("../../UnfocusArea:ignore_focus")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [false]
+}
+
+[sub_resource type="Animation" id="Animation_ww3hp"]
+resource_name = "slide_animation_hide"
+length = 0.5
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:slide_value")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.5),
+"transitions": PackedFloat32Array(0.2, 0.2),
+"update": 0,
+"values": [1.0, 0.0]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("../../UnfocusArea:ignore_focus")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [true]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_1y4wo"]
+_data = {
+"RESET": SubResource("Animation_mm0tu"),
+"slide_animation": SubResource("Animation_1mtd0"),
+"slide_animation_hide": SubResource("Animation_ww3hp")
+}
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0rdsd"]
+bg_color = Color(0.113725, 0.113725, 0.113725, 1)
+border_width_bottom = 5
+border_color = Color(0, 0.0252953, 0.0821214, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_8kcb2"]
+bg_color = Color(0.113725, 0.113725, 0.113725, 1)
+border_width_left = 2
+border_width_bottom = 2
+border_color = Color(0.686275, 0.686275, 0.686275, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_i7luo"]
+bg_color = Color(0.18359, 0.18359, 0.18359, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_mfhn1"]
+bg_color = Color(0.0562916, 0.0562916, 0.0562916, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_npbu6"]
+bg_color = Color(0.113725, 0.113725, 0.113725, 1)
+
 [node name="Control" type="Control"]
 layout_mode = 3
 anchors_preset = 15
@@ -46,6 +158,9 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+
+[node name="SplitRatioMaintainer" type="SplitRatioMaintainer" parent="."]
+target_object_list = [NodePath("../VSplitContainer"), NodePath("../VSplitContainer/HSplitContainer")]
 
 [node name="Panel" type="Panel" parent="."]
 layout_mode = 1
@@ -379,3 +494,147 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_fonts/font = ExtResource("1_n2lrs")
 placeholder_text = "Input here"
+
+[node name="SettingsArea" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="UnfocusArea" type="FocusArea" parent="SettingsArea"]
+ignore_focus = true
+anchor_right = 1.0
+anchor_bottom = 1.0
+scale = Vector2(1e-05, 1e-05)
+
+[node name="SettingPanel" type="Control" parent="SettingsArea"]
+layout_mode = 1
+anchors_preset = 11
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 0
+grow_vertical = 2
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="SettingsArea/SettingPanel"]
+root_node = NodePath("../SlideAnimationControl")
+libraries = {
+"": SubResource("AnimationLibrary_1y4wo")
+}
+
+[node name="OptionControl" type="OptionControl" parent="SettingsArea/SettingPanel"]
+settings_logo = ExtResource("14_dify4")
+close_logo = ExtResource("15_o08uj")
+animation_player = NodePath("../AnimationPlayer")
+settings_button = NodePath("../BackgroundPanel/ButtonPanel/MarginContainer/Button")
+settings_unfocus_area = NodePath("../../UnfocusArea")
+option_menu_path = NodePath("../BackgroundPanel/OptionListMenu")
+
+[node name="SlideAnimationControl" type="SlideAnimationControl" parent="SettingsArea/SettingPanel"]
+target_node = NodePath("../BackgroundPanel")
+slide_direction = 3
+
+[node name="BackgroundPanel" type="Panel" parent="SettingsArea/SettingPanel"]
+custom_minimum_size = Vector2(500, 0)
+layout_mode = 1
+anchors_preset = 13
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_right = 500.0
+grow_horizontal = 2
+grow_vertical = 2
+focus_mode = 1
+theme_override_styles/panel = SubResource("StyleBoxFlat_0rdsd")
+
+[node name="ButtonPanel" type="Panel" parent="SettingsArea/SettingPanel/BackgroundPanel"]
+layout_mode = 1
+offset_left = -40.0
+offset_bottom = 40.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_8kcb2")
+
+[node name="MarginContainer" type="MarginContainer" parent="SettingsArea/SettingPanel/BackgroundPanel/ButtonPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 5
+theme_override_constants/margin_top = 5
+theme_override_constants/margin_right = 5
+theme_override_constants/margin_bottom = 5
+
+[node name="Button" type="Button" parent="SettingsArea/SettingPanel/BackgroundPanel/ButtonPanel/MarginContainer"]
+layout_mode = 2
+theme_override_styles/hover = SubResource("StyleBoxFlat_i7luo")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_mfhn1")
+theme_override_styles/normal = SubResource("StyleBoxFlat_npbu6")
+icon = ExtResource("14_dify4")
+icon_alignment = 1
+expand_icon = true
+
+[node name="OptionListMenu" type="OptionListMenu" parent="SettingsArea/SettingPanel/BackgroundPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="SettingsArea/SettingPanel/BackgroundPanel/OptionListMenu"]
+layout_mode = 2
+offset_right = 500.0
+offset_bottom = 648.0
+size_flags_horizontal = 3
+size_flags_vertical = 3
+focus_mode = 2
+mouse_filter = 0
+theme_override_constants/margin_left = 30
+theme_override_constants/margin_top = 60
+theme_override_constants/margin_right = 30
+theme_override_constants/margin_bottom = 60
+
+[node name="VBoxContainer" type="VBoxContainer" parent="SettingsArea/SettingPanel/BackgroundPanel/OptionListMenu/MarginContainer"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="SettingsArea/SettingPanel/BackgroundPanel/OptionListMenu/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Option Menu"
+horizontal_alignment = 1
+
+[node name="MarginContainer" type="MarginContainer" parent="SettingsArea/SettingPanel/BackgroundPanel/OptionListMenu/MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/margin_top = 20
+
+[node name="ScrollContainer" type="ScrollContainer" parent="SettingsArea/SettingPanel/BackgroundPanel/OptionListMenu/MarginContainer/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="VBoxContainer" type="VBoxContainer" parent="SettingsArea/SettingPanel/BackgroundPanel/OptionListMenu/MarginContainer/VBoxContainer/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 0
+
+[node name="OptionValueControl" type="OptionValueControl" parent="SettingsArea/SettingPanel/BackgroundPanel/OptionListMenu/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer"]
+option_key = "ignore_internal_data"
+custom_minimum_size = Vector2(44, 24)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="HBoxContainer" type="HBoxContainer" parent="SettingsArea/SettingPanel/BackgroundPanel/OptionListMenu/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/OptionValueControl"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="SettingsArea/SettingPanel/BackgroundPanel/OptionListMenu/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/OptionValueControl/HBoxContainer"]
+layout_mode = 2
+theme_override_fonts/font = ExtResource("1_n2lrs")
+text = "Ignore Internal Data"
+
+[node name="CheckButton" type="CheckButton" parent="SettingsArea/SettingPanel/BackgroundPanel/OptionListMenu/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/OptionValueControl/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 10

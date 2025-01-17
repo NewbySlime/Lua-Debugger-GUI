@@ -25,12 +25,15 @@ namespace GameUtils{
 
     public:
       // Param:
+      //  - STRING: Log info
       //  - STRING: the Log message
       static const char* s_on_log;
       // Param:
+      //  - STRING: Log info
       //  - STRING: the Log message
       static const char* s_on_warn_log;
       // Param:
+      //  - STRING: Log info
       //  - STRING: the Log message
       static const char* s_on_error_log;
 
@@ -40,7 +43,7 @@ namespace GameUtils{
 #endif
 
       static godot::String _get_current_time();
-      static godot::String _log_formatting(const char* flag, const godot::String& msg);
+      static godot::String _get_log_info(const char* flag);
 
     protected:
       static void _bind_methods();

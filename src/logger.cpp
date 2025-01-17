@@ -31,9 +31,9 @@ Logger *_static_logger_obj = NULL;
 
 
 void Logger::_bind_methods(){
-  ADD_SIGNAL(MethodInfo(s_on_log, PropertyInfo(Variant::STRING, "msg")));
-  ADD_SIGNAL(MethodInfo(s_on_warn_log, PropertyInfo(Variant::STRING, "msg")));
-  ADD_SIGNAL(MethodInfo(s_on_error_log, PropertyInfo(Variant::STRING, "msg")));
+  ADD_SIGNAL(MethodInfo(s_on_log, PropertyInfo(Variant::STRING, "msg_info"), PropertyInfo(Variant::STRING, "msg")));
+  ADD_SIGNAL(MethodInfo(s_on_warn_log, PropertyInfo(Variant::STRING, "msg_info"), PropertyInfo(Variant::STRING, "msg")));
+  ADD_SIGNAL(MethodInfo(s_on_error_log, PropertyInfo(Variant::STRING, "msg_info"), PropertyInfo(Variant::STRING, "msg")));
 }
 
 
@@ -62,9 +62,9 @@ String Logger::_get_current_time(){
   return gd_format_str(TIME_STRING_FORMAT, _gd_time_str, _time_milli);
 }
 
-String Logger::_log_formatting(const char* flag, const String& msg){
+String Logger::_get_log_info(const char* flag){
   String _curr_time = _get_current_time();
-  return gd_format_str("{0}{1}: {2}", flag, _curr_time, msg);
+  return gd_format_str("{0}{1}", flag, _curr_time);
 }
 
 
@@ -100,34 +100,31 @@ void Logger::print_err_static(const String &err){
 
 void Logger::print_log(const String &log){
   __LOCK_MUTEX(_log_mutex);
-  String _msg = _log_formatting(LOGGING_FLAG, log);
+  String _msg_info = _get_log_info(LOGGING_FLAG);
+  String _msg = gd_format_str("{0}: {1}", _msg_info, log);
   UtilityFunctions::print(_msg);
 
-  if(!_msg.ends_with("\n"))
-    _msg += "\n";
-  emit_signal(s_on_log, _msg);
+  emit_signal(s_on_log, _msg_info, log);
   __RELEASE_MUTEX(_log_mutex);
 }
 
 void Logger::print_warn(const String &warning){
   __LOCK_MUTEX(_log_mutex);
-  String _msg = _log_formatting(WARNING_FLAG, warning);
+  String _msg_info = _get_log_info(WARNING_FLAG);
+  String _msg = gd_format_str("{0}: {1}", _msg_info, warning);
   UtilityFunctions::print(_msg);
 
-  if(!_msg.ends_with("\n"))
-    _msg += "\n";
-  emit_signal(s_on_warn_log, _msg);
+  emit_signal(s_on_warn_log, _msg_info, warning);
   __RELEASE_MUTEX(_log_mutex); 
 }
 
 void Logger::print_err(const String &err){
   __LOCK_MUTEX(_log_mutex);
-  String _msg = _log_formatting(ERROR_FLAG, err);
+  String _msg_info = _get_log_info(ERROR_FLAG);
+  String _msg = gd_format_str("{0}: {1}", _msg_info, err);
   UtilityFunctions::print(_msg);
 
-  if(!_msg.ends_with("\n"))
-    _msg += "\n";
-  emit_signal(s_on_error_log, _msg);
+  emit_signal(s_on_error_log, _msg_info, err);
   __RELEASE_MUTEX(_log_mutex);
 }
 

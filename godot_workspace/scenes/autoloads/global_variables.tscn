@@ -1,0 +1,11 @@
+[gd_scene format=3 uid="uid://b4vpnvvq08h0j"]
+
+[node name="GlobalVariables" type="GlobalVariables"]
+global_data = {
+"default_config_data": {
+"ignore_internal_data": true
+},
+"expected_config_vartype": {
+"ignore_internal_data": "Bool"
+}
+}

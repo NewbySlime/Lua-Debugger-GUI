@@ -18,12 +18,17 @@ using namespace lua::debug;
 
 
 void VariableWatcher::_bind_methods(){
+  ClassDB::bind_method(D_METHOD("_on_global_variable_changed", "key", "value"), &VariableWatcher::_on_global_variable_changed);
+  ClassDB::bind_method(D_METHOD("_on_option_control_changed", "key", "value"), &VariableWatcher::_on_option_control_changed);
+
+  ClassDB::bind_method(D_METHOD("_lua_on_thread_starting"), &VariableWatcher::_lua_on_thread_starting);
   ClassDB::bind_method(D_METHOD("_lua_on_pausing"), &VariableWatcher::_lua_on_pausing);
   ClassDB::bind_method(D_METHOD("_lua_on_resuming"), &VariableWatcher::_lua_on_resuming);
   ClassDB::bind_method(D_METHOD("_lua_on_stopping"), &VariableWatcher::_lua_on_stopping);
 
   ClassDB::bind_method(D_METHOD("get_variable_tree_path"), &VariableWatcher::get_variable_tree_path);
   ClassDB::bind_method(D_METHOD("set_variable_tree_path", "path"), &VariableWatcher::set_variable_tree_path);
+
   ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "variable_tree_path"), "set_variable_tree_path", "get_variable_tree_path");
 }
 
@@ -36,6 +41,56 @@ VariableWatcher::~VariableWatcher(){
   _clear_variable_tree();
 }
 
+
+void VariableWatcher::_on_global_variable_changed(const String& key, const Variant& value){
+  typedef void (VariableWatcher::*key_cb_type)(const Variant& value);
+  std::map<String, key_cb_type> _key_cb = {
+    {OptionControl::gvar_object_node_path, &VariableWatcher::_gvar_changed_option_control_path}
+  };
+
+  auto _iter = _key_cb.find(key);
+  if(_iter == _key_cb.end())
+    return;
+  
+  (this->*_iter->second)(value);
+}
+
+void VariableWatcher::_gvar_changed_option_control_path(const Variant& value){
+  if(value.get_type() != Variant::NODE_PATH)
+    return;
+
+  NodePath _opt_control_path = value;
+  OptionControl* _opt_control = get_node<OptionControl>(_opt_control_path);
+  if(!_opt_control){
+    GameUtils::Logger::print_err_static(gd_format_str("[VariableWatcher] Path '{0}' is not a valid OptionControl object.", _opt_control_path));
+    return;
+  }
+
+  _bind_object(_opt_control);
+}
+
+
+void VariableWatcher::_on_option_control_changed(const String& key, const Variant& value){
+  typedef void (VariableWatcher::*key_cb_type)(const Variant& value);
+  std::map<String, key_cb_type> _key_cb = {
+    {"ignore_internal_data", &VariableWatcher::_option_changed_ignore_internal_data}
+  };
+
+  auto _iter = _key_cb.find(key);
+  if(_iter == _key_cb.end())
+    return;
+
+  (this->*_iter->second)(value);
+}
+
+void VariableWatcher::_option_changed_ignore_internal_data(const Variant& value){
+  set_ignore_internal_variables(value);
+}
+
+
+void VariableWatcher::_lua_on_thread_starting(){
+  _lua_program_handle->get_variable_watcher()->ignore_internal_variables(_ignore_internal_variables);
+}
 
 void VariableWatcher::_lua_on_pausing(){
   _update_variable_tree();
@@ -172,6 +227,11 @@ void VariableWatcher::_clear_variable_tree(){
 }
 
 
+void VariableWatcher::_bind_object(OptionControl* obj){
+  obj->connect(OptionControl::s_value_set, Callable(this, "_on_option_control_changed"));
+}
+
+
 void VariableWatcher::_ready(){
   Engine* _engine = Engine::get_singleton();
   if(_engine->is_editor_hint())
@@ -179,6 +239,7 @@ void VariableWatcher::_ready(){
 
   int _quit_code;
 
+{ // enclosure for using goto
   _lua_lib = get_node<LibLuaHandle>("/root/GlobalLibLuaHandle");
   if(!_lua_lib){
     GameUtils::Logger::print_err_static("[VariableWatcher] Cannot get Library Handle for Lua.");
@@ -195,6 +256,14 @@ void VariableWatcher::_ready(){
     goto on_error_label;
   }
 
+  _gvariables = get_node<GlobalVariables>(GlobalVariables::singleton_path);
+  if(!_gvariables){
+    GameUtils::Logger::print_err_static("[VariableWatcher] Cannot get GlobalVariables.");
+
+    _quit_code = ERR_UNCONFIGURED;
+    goto on_error_label;
+  }
+
   _variable_tree = get_node<Tree>(_variable_tree_path);
   if(!_variable_tree){
     GameUtils::Logger::print_err_static("[VariableWatcher] Cannot get Tree for Variable Inspector.");
@@ -203,13 +272,21 @@ void VariableWatcher::_ready(){
     goto on_error_label;
   }
 
+  // just in case
+  Variant _opt_control_path = _gvariables->get_global_value(OptionControl::gvar_object_node_path);
+  _gvar_changed_option_control_path(_opt_control_path);
+
+  _gvariables->connect(GlobalVariables::s_global_value_set, Callable(this, "_on_global_variable_changed"));
+
   _lua_lib_data = _lua_lib->get_library_store();
 
+  _lua_program_handle->connect(LuaProgramHandle::s_thread_starting, Callable(this, "_lua_on_thread_starting"));
   _lua_program_handle->connect(LuaProgramHandle::s_pausing, Callable(this, "_lua_on_pausing"));
   _lua_program_handle->connect(LuaProgramHandle::s_resuming, Callable(this, "_lua_on_resuming"));
   _lua_program_handle->connect(LuaProgramHandle::s_stopping, Callable(this, "_lua_on_stopping"));
 
   _clear_variable_tree();
+} // enclosure closing
 
   return;
 
@@ -219,6 +296,21 @@ void VariableWatcher::_ready(){
 
     get_tree()->quit(_quit_code);
   return;}
+}
+
+
+void VariableWatcher::set_ignore_internal_variables(bool flag){
+  _ignore_internal_variables = flag;
+  if(_lua_program_handle && _lua_program_handle->is_running()){
+    I_variable_watcher* _vw = _lua_program_handle->get_variable_watcher();
+    _vw->ignore_internal_variables(_ignore_internal_variables);
+  }
+
+  _update_variable_tree();
+}
+
+bool VariableWatcher::get_ignore_internal_variables() const{
+  return _ignore_internal_variables;
 }
 
 

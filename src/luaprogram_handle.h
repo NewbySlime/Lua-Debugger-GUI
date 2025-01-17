@@ -15,6 +15,7 @@ class LuaProgramHandle: public godot::Node{
   GDCLASS(LuaProgramHandle, godot::Node)
 
   public:
+    // NOTE: running thread will be suspended at this state
     static const char* s_thread_starting;
     static const char* s_starting;
     static const char* s_stopping;

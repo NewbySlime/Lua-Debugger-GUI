@@ -35,9 +35,9 @@ class ConsoleWindow: public godot::Control{
     godot::NodePath _input_text_path;
     godot::LineEdit* _input_text;
 
-    void _on_log(const godot::String& str);
-    void _on_log_warn(const godot::String& str);
-    void _on_log_err(const godot::String& str);
+    void _on_log(const godot::String& msg_info, const godot::String& str);
+    void _on_log_warn(const godot::String& msg_info, const godot::String& str);
+    void _on_log_err(const godot::String& msg_info, const godot::String& str);
 
     godot::String _wrap_color(const godot::String& str, godot::Color col);
 
@@ -46,7 +46,7 @@ class ConsoleWindow: public godot::Control{
     void _add_string_to_output_buffer(const std::string& str);
     void _write_to_output_text();
 
-  protected:
+protected:
     static void _bind_methods();
 
   public:

@@ -1,0 +1,4 @@
+This file include a list of variables used in program configuration.
+
+ignore_internal_data: Bool
+  This parameter ignores any internal Lua variables to be shown in the program.

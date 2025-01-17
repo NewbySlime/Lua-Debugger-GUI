@@ -10,9 +10,16 @@
 #include "code_window.h"
 #include "console_window.h"
 #include "execution_context.h"
+#include "focus_area.h"
+#include "global_variables.h"
 #include "liblua_handle.h"
 #include "luaprogram_handle.h"
 #include "logger.h"
+#include "option_control.h"
+#include "option_list_menu.h"
+#include "option_value_control.h"
+#include "slide_animation_control.h"
+#include "split_ratio_maintainer.h"
 #include "variable_watcher.h"
 
 using namespace godot;
@@ -30,9 +37,16 @@ void initialize_gdextension_module(ModuleInitializationLevel p_level) {
   ClassDB::register_class<CodeWindow>();
   ClassDB::register_class<ConsoleWindow>();
   ClassDB::register_class<ExecutionContext>();
+  ClassDB::register_class<FocusArea>();
   ClassDB::register_class<GameUtils::Logger>();
+  ClassDB::register_class<GlobalVariables>();
   ClassDB::register_class<LuaProgramHandle>();
   ClassDB::register_class<LibLuaHandle>();
+  ClassDB::register_class<OptionControl>();
+  ClassDB::register_class<OptionListMenu>();
+  ClassDB::register_class<OptionValueControl>();
+  ClassDB::register_class<SlideAnimationControl>();
+  ClassDB::register_class<SplitRatioMaintainer>();
   ClassDB::register_class<VariableWatcher>();
 }
 
