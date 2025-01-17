@@ -1,3 +1,5 @@
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/X8X0175H9C)
+
 # Lua Debugger
 A debugger made for Lua with Graphical UI made using Godot 4.3.
 
@@ -8,6 +10,7 @@ This is a part of a project: [Lua-Debug-API](https://github.com/NewbySlime/Lua-D
 
 ##  Features
 - Easy to use debugging options.
+- Breakpoint feature.
 - Code viewer with line indicator for which line it currently runs.
 - Variables can be viewed in the variable inspector window.
 - Integrated console window for Lua IO.
@@ -53,6 +56,3 @@ Open Godot with this project, and build it in the **Project/Export** menu.
 
 ## Contributing
 Any contributions are appreciated, make sure to state your problems or features. You might also want to expect on some long delay in merging since I'm still in University.
-
-## Support Me!
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/X8X0175H9C)
