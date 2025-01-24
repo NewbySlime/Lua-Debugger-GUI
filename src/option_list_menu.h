@@ -29,6 +29,10 @@ class OptionListMenu: public godot::Control{
   public:
     void _ready() override;
 
+    // If relative_node is NULL, returned path is absolute.
+    godot::NodePath get_value_control_path(const godot::String& key, godot::Node* relative_node = NULL) const;
+    OptionValueControl* get_value_control_node(const godot::String& key) const;
+
     void set_value_data(const godot::String& key, const godot::Variant& value);
     godot::Variant get_value_data(const godot::String& key) const;
 };

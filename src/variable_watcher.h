@@ -5,18 +5,26 @@
 #include "liblua_handle.h"
 #include "luaprogram_handle.h"
 #include "option_control.h"
+#include "popup_variable_setter.h"
 
 #include "godot_cpp/classes/control.hpp"
 #include "godot_cpp/classes/tree.hpp"
 #include "godot_cpp/variant/node_path.hpp"
+
+#include "map"
 
 
 class VariableWatcher: public godot::Control{
   GDCLASS(VariableWatcher, godot::Control)
 
   private:
-    std::set<std::string> _filter_key = {
-      "(*temporary)"
+    struct _variable_tree_item_metadata{
+      public:
+        int variable_type;
+    };
+
+    std::set<lua::comparison_variant> _filter_key = {
+      lua::string_var("(*temporary)")
     };
 
     LibLuaHandle* _lua_lib;
@@ -30,6 +38,8 @@ class VariableWatcher: public godot::Control{
     godot::Tree* _variable_tree = NULL;
 
     GlobalVariables* _gvariables;
+
+    PopupVariableSetter* _popup_variable_setter;
 
     bool _ignore_internal_variables = false;
 
@@ -45,8 +55,18 @@ class VariableWatcher: public godot::Control{
     void _lua_on_resuming();
     void _lua_on_stopping();
 
+    void _item_selected(const godot::Vector2 mouse_pos, int mouse_idx);
+    void _item_activated();
+
+    void _variable_setter_do_popup();
+
     void _update_tree_item(godot::TreeItem* parent_item, lua::debug::I_variable_watcher* watcher);
-    void _update_tree_item(godot::TreeItem* parent_item, lua::I_table_var* var);
+    void _update_tree_item(godot::TreeItem* parent_item, const lua::I_table_var* var);
+    void _update_tree_item(godot::TreeItem* parent_item, const lua::I_variant* key_var, const lua::I_variant* var);
+
+    void _update_global_variables();
+    void _update_local_variables();
+    void _clear_variable_data();
 
     void _update_variable_tree();
     void _clear_variable_tree();

@@ -34,7 +34,12 @@ class OptionValueControl: public godot::BoxContainer{
 
   public:
     void _ready() override;
-    void _draw() override;
+
+    // Might return empty path if this object not yet ready or value control node cannot be found. 
+    // If relative_node is NULL, returned path is absolute.
+    godot::NodePath get_value_control_path(godot::Node* relative_node = NULL) const; 
+    // Might return NULL if this object not yet ready or value control node cannot be found.
+    godot::Node* get_value_control_node() const;
 
     void set_option_key(const godot::String& key);
     godot::String get_option_key() const;

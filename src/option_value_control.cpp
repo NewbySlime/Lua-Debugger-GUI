@@ -169,8 +169,19 @@ void OptionValueControl::_ready(){
   return;}
 }
 
-void OptionValueControl::_draw(){
-  
+
+NodePath OptionValueControl::get_value_control_path(Node* relative_node) const{
+  if(!_option_control_node)
+    return NodePath();
+
+  if(relative_node)
+    return relative_node->get_path_to(_option_control_node);
+
+  return _option_control_node->get_path();
+}
+
+Node* OptionValueControl::get_value_control_node() const{
+  return _option_control_node;
 }
 
 

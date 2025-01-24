@@ -1,0 +1,27 @@
+[gd_scene load_steps=2 format=3 uid="uid://cp50gbm7pm6et"]
+
+[ext_resource type="PackedScene" uid="uid://dwyokcxe5rwmk" path="res://scenes/popup_variable_setter_base.tscn" id="1_ohqsc"]
+
+[node name="PopupMenu" type="PopupVariableSetter"]
+option_list = NodePath("OptionListMenu")
+mode_node_list = {
+0: ["number_data"],
+1: ["string_data"],
+2: ["boolean_data"]
+}
+initial_position = 1
+size = Vector2i(1000, 600)
+visible = true
+
+[node name="OptionListMenu" parent="." instance=ExtResource("1_ohqsc")]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = 996.0
+offset_bottom = 596.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0

@@ -26,6 +26,9 @@ void VariableWatcher::_bind_methods(){
   ClassDB::bind_method(D_METHOD("_lua_on_resuming"), &VariableWatcher::_lua_on_resuming);
   ClassDB::bind_method(D_METHOD("_lua_on_stopping"), &VariableWatcher::_lua_on_stopping);
 
+  ClassDB::bind_method(D_METHOD("_item_selected", "mouse_pos", "mouse_button_index"), &VariableWatcher::_item_selected);
+  ClassDB::bind_method(D_METHOD("_item_activated"), &VariableWatcher::_item_activated);
+
   ClassDB::bind_method(D_METHOD("get_variable_tree_path"), &VariableWatcher::get_variable_tree_path);
   ClassDB::bind_method(D_METHOD("set_variable_tree_path", "path"), &VariableWatcher::set_variable_tree_path);
 
@@ -105,39 +108,42 @@ void VariableWatcher::_lua_on_stopping(){
 }
 
 
+void VariableWatcher::_item_selected(const Vector2 mouse_pos, int mouse_idx){
+  _variable_setter_do_popup();
+}
+
+void VariableWatcher::_item_activated(){
+  
+}
+
+
+void VariableWatcher::_variable_setter_do_popup(){
+  
+}
+
+
 void VariableWatcher::_update_tree_item(TreeItem* parent_item, I_variable_watcher* watcher){
   const core _lc = _lua_program_handle->get_runtime_handler()->get_lua_core_copy();
   for(int i = 0; i < watcher->get_variable_count(); i++){
-    auto _iter = _filter_key.find(watcher->get_variable_name(i));
+    const I_variant* _key_var = watcher->get_variable_key(i);
+    auto _iter = _filter_key.find(_key_var);
     if(_iter != _filter_key.end())
       continue;
 
     TreeItem* _var_title = _variable_tree->create_item(parent_item);
-    I_variant* _variant = watcher->get_variable(i);
-
-  { // Closing scope not to fill memory as it might recurse
-    std::string _format_val_str = format_str("%s: %s", watcher->get_variable_name(i), _lc.context->api_value->ttypename(_lc.istate, watcher->get_variable_type(i)));
-    _var_title->set_text(0, _format_val_str.c_str());
-  }
+    const I_variant* _value_var = watcher->get_variable_value(i);
     
-    switch(_variant->get_type()){
+    switch(_value_var->get_type()){
       break; case lua::table_var::get_static_lua_type():{
-        _update_tree_item(_var_title, dynamic_cast<I_table_var*>(_variant));
-      }
-
-      break; case lua::nil_var::get_static_lua_type():
-        // do nothing
-
-      break; default:{
-        string_store _str; _variant->to_string(&_str);
-        TreeItem* _var_data = _variable_tree->create_item(_var_title);
-        _var_data->set_text(0, _str.data.c_str());
+        _update_tree_item(_var_title, dynamic_cast<const I_table_var*>(_value_var));
       }
     }
+    
+    _update_tree_item(_var_title, _key_var, _value_var);
   }
 }
 
-void VariableWatcher::_update_tree_item(TreeItem* parent_item, I_table_var* var){
+void VariableWatcher::_update_tree_item(TreeItem* parent_item, const I_table_var* var){
   auto _iter = _parsed_table_list.find(var->get_table_pointer());
   if(_iter != _parsed_table_list.end())
     return;
@@ -150,34 +156,46 @@ void VariableWatcher::_update_tree_item(TreeItem* parent_item, I_table_var* var)
   int _idx = 0;
   while(_keys_list[_idx]){
     const I_variant* _key_data = _keys_list[_idx];
-    string_store _key_str; _key_data->to_string(&_key_str);
-    auto _iter = _filter_key.find(_key_str.data);
+    auto _iter = _filter_key.find(_key_data);
     if(_iter != _filter_key.end()){
       TreeItem* _var_title = _variable_tree->create_item(parent_item);
-      I_variant* _value_data = var->get_value(_key_data);
-
-      { // Closing scope not to fill memory as it might recurse
-        std::string _format_val_str = format_str("%s: %s", _key_str.data.c_str(), _lc.context->api_value->ttypename(_lc.istate, _value_data->get_type()));
-        _var_title->set_text(0, _format_val_str.c_str());
-      }
+      const I_variant* _value_data = var->get_value(_key_data);
 
       switch(_value_data->get_type()){
         break; case lua::table_var::get_static_lua_type():{
-          _update_tree_item(_var_title, dynamic_cast<I_table_var*>(_value_data));
-        }
-
-        break; default:{
-          string_store _value_str; _value_data->to_string(&_value_str);
-          TreeItem* _var_data = _variable_tree->create_item(_var_title);
-          _var_data->set_text(0, _value_str.data.c_str());
+          _update_tree_item(_var_title, dynamic_cast<const I_table_var*>(_value_data));
         }
       }
 
+      _update_tree_item(_var_title, _key_data, _value_data);
       var->free_variant(_value_data);
     }
 
     _idx++;
   }
+}
+
+void VariableWatcher::_update_tree_item(TreeItem* parent_item, const I_variant* key_var, const I_variant* var){
+  const char* _prefix_string = "";
+  const char* _suffix_string = "";
+
+  switch(var->get_type()){
+    break; case lua::string_var::get_static_lua_type():{
+      _prefix_string = "\"";
+      _suffix_string = "\"";
+    }
+  }
+
+  string_store _key_str; key_var->to_string(&_key_str);
+  string_store _value_str; var->to_string(&_value_str);
+  std::string _format_val_str = format_str("%s: %s%s%s",
+    _key_str.data.c_str(),
+    _prefix_string,
+    _value_str.data.c_str(),
+    _suffix_string
+  );
+
+  parent_item->set_text(0, _format_val_str.c_str());
 }
 
 
@@ -199,7 +217,7 @@ void VariableWatcher::_update_variable_tree(){
   _file_item->set_text(0, _file_name.c_str());
 
   // update local variables
-  _variable_watcher->fetch_current_function_variables();
+  _variable_watcher->update_local_variables();
 
   std::string _func_name = _lua_program_handle->get_current_function();
   TreeItem* _func_item = _variable_tree->create_item(_file_item);
@@ -208,7 +226,7 @@ void VariableWatcher::_update_variable_tree(){
   _update_tree_item(_func_item, _variable_watcher);
 
   // update global variables
-  _variable_watcher->fetch_global_table_data();
+  _variable_watcher->update_global_variables();
 
   TreeItem* _global_item = _variable_tree->create_item(_file_item);
   _global_item->set_text(0, "Global");
@@ -264,6 +282,11 @@ void VariableWatcher::_ready(){
     goto on_error_label;
   }
 
+  NodePath _popup_var_path = _gvariables->get_global_value(GlobalVariables::key_popup_variable_setter_path);
+  _popup_variable_setter = _gvariables->get_node<PopupVariableSetter>(_popup_var_path);
+  if(!_popup_variable_setter)
+    return;
+
   _variable_tree = get_node<Tree>(_variable_tree_path);
   if(!_variable_tree){
     GameUtils::Logger::print_err_static("[VariableWatcher] Cannot get Tree for Variable Inspector.");
@@ -271,6 +294,9 @@ void VariableWatcher::_ready(){
     _quit_code = ERR_UNCONFIGURED;
     goto on_error_label;
   }
+
+  _variable_tree->connect("item_mouse_selected", Callable(this, "_item_selected"));
+  _variable_tree->connect("item_activated", Callable(this, "_item_activated"));
 
   // just in case
   Variant _opt_control_path = _gvariables->get_global_value(OptionControl::gvar_object_node_path);

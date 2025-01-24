@@ -54,6 +54,31 @@ void OptionListMenu::_ready(){
 }
 
 
+NodePath OptionListMenu::get_value_control_path(const String& key, Node* relative_node) const{
+  auto _iter = _option_lists.find(key);
+  if(_iter == _option_lists.end()){
+    GameUtils::Logger::print_warn_static(gd_format_str("[OptionListMenu] Cannot get path of OptionValueControl node of key '{0}'.", key));
+    return NodePath();
+  }
+
+  if(relative_node)
+    return relative_node->get_path_to(_iter->second);
+  
+  return _iter->second->get_path();
+}
+
+
+OptionValueControl* OptionListMenu::get_value_control_node(const String& key) const{
+  auto _iter = _option_lists.find(key);
+  if(_iter == _option_lists.end()){
+    GameUtils::Logger::print_warn_static(gd_format_str("[OptionListMenu] Cannot get OptionValueControl node of key '{0}'.", key));
+    return NULL;
+  }
+
+  return _iter->second;
+}
+
+
 void OptionListMenu::set_value_data(const String& key, const Variant& value){
   auto _iter = _option_lists.find(key);
   if(_iter == _option_lists.end()){
