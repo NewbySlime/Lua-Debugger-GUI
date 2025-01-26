@@ -14,6 +14,7 @@
 using namespace dynamic_library::util;
 using namespace ErrorTrigger;
 using namespace godot;
+using namespace lua;
 
 
 const char* PopupVariableSetter::s_applied = "applied";
@@ -57,6 +58,8 @@ void PopupVariableSetter::_bind_methods(){
   ClassDB::bind_method(D_METHOD("_on_value_set", "key", "value"), &PopupVariableSetter::_on_value_set);
   ClassDB::bind_method(D_METHOD("_on_accept_button_pressed"), &PopupVariableSetter::_on_accept_button_pressed);
   ClassDB::bind_method(D_METHOD("_on_cancel_button_pressed"), &PopupVariableSetter::_on_cancel_button_pressed);
+  ClassDB::bind_method(D_METHOD("_on_popup"), &PopupVariableSetter::_on_popup);
+  ClassDB::bind_method(D_METHOD("_on_popup_hide"), &PopupVariableSetter::_on_popup_hide);
   ClassDB::bind_method(D_METHOD("_on_enum_button_selected", "idx"), &PopupVariableSetter::_on_enum_button_selected);
 
   ClassDB::bind_method(D_METHOD("set_option_list_path", "path"), &PopupVariableSetter::set_option_list_path);
@@ -100,11 +103,30 @@ void PopupVariableSetter::_on_accept_button_pressed(){
   _data_output = _data_init;
   _data_output.setter_mode = _current_mode;
   
+  if(_apply_callable.is_valid())
+    _apply_callable.call(this);
+
+  _applied = true;
   emit_signal(PopupVariableSetter::s_applied);
+  
+  hide();
 }
 
 void PopupVariableSetter::_on_cancel_button_pressed(){
   emit_signal(PopupVariableSetter::s_cancelled);
+  
+  hide();
+}
+
+void PopupVariableSetter::_on_popup(){
+  _applied = false;
+}
+
+void PopupVariableSetter::_on_popup_hide(){
+  _apply_callable = Callable();
+
+  if(!_applied)
+    emit_signal(PopupVariableSetter::s_cancelled);
 }
 
 
@@ -245,6 +267,9 @@ void PopupVariableSetter::_ready(){
 
   _try_parse_mode_node_list();
 
+  connect("about_to_popup", Callable(this, "_on_popup"));
+  connect("popup_hide", Callable(this, "_on_popup_hide"));
+
   _option_list->connect(OptionListMenu::s_value_set, Callable(this, "_on_value_set"));
   _accept_button->connect("pressed", Callable(this, "_on_accept_button_pressed"));
   _cancel_button->connect("pressed", Callable(this, "_on_cancel_button_pressed"));
@@ -321,6 +346,42 @@ PopupVariableSetter::VariableData& PopupVariableSetter::get_input_data(){
 
 const PopupVariableSetter::VariableData& PopupVariableSetter::get_output_data() const{
   return _data_output;
+}
+
+
+void PopupVariableSetter::set_popup_data(const I_variant* var){
+  _data_init = VariableData();
+  switch(var->get_type()){
+    break; case I_number_var::get_static_lua_type():{
+      const I_number_var* _nvar = dynamic_cast<const I_number_var*>(var);
+
+      set_mode_type(setter_mode_number);
+      _data_init.number_data = _nvar->get_number(); 
+    }
+
+    break; case I_string_var::get_static_lua_type():{
+      const I_string_var* _svar = dynamic_cast<const I_string_var*>(var);
+
+      set_mode_type(setter_mode_string);
+      _data_init.string_data = _svar->get_string();
+    }
+
+    break; case I_bool_var::get_static_lua_type():{
+      const I_bool_var* _bvar = dynamic_cast<const I_bool_var*>(var);
+
+      set_mode_type(setter_mode_bool);
+      _data_init.bool_data = _bvar->get_boolean();
+    }
+  }
+
+  update_input_data_ui();
+
+  // TODO add error when passing unsupported variant type
+}
+
+
+void PopupVariableSetter::bind_apply_callable(const Callable& cb){
+  _apply_callable = cb;
 }
 
 

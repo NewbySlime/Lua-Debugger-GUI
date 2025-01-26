@@ -1,6 +1,18 @@
 #include "gd_string_store.h"
 
 
+using namespace godot;
+
+
+gd_string_store::gd_string_store(const char* cstr){
+  data = cstr;
+}
+
+gd_string_store::gd_string_store(const String& gdstr){
+  data = gdstr;
+}
+
+
 void gd_string_store::append(const char* data){
   this->data += data;
 }

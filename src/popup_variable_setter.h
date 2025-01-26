@@ -1,6 +1,7 @@
 #ifndef POPUP_VARIABLE_SETTER_HEADER
 #define POPUP_VARIABLE_SETTER_HEADER
 
+#include "Lua-CPPAPI/Src/luavariant.h"
 #include "option_list_menu.h"
 
 #include "godot_cpp/classes/button.hpp"
@@ -71,9 +72,12 @@ class PopupVariableSetter: public godot::PopupPanel{
     godot::Button* _accept_button;
     godot::Button* _cancel_button;
 
+    godot::Callable _apply_callable;
+
     std::map<int, _mode_node_data*> _mode_node_map;
 
     bool _enable_enum_button_signal = true;
+    bool _applied = false;
 
 
     void _on_value_set(const godot::String& key, const godot::Variant& value);
@@ -83,6 +87,8 @@ class PopupVariableSetter: public godot::PopupPanel{
 
     void _on_accept_button_pressed();
     void _on_cancel_button_pressed();
+    void _on_popup();
+    void _on_popup_hide();
 
     void _on_enum_button_selected(int idx);
 
@@ -110,7 +116,12 @@ class PopupVariableSetter: public godot::PopupPanel{
 
     // VariableData::setter_mode is ignored when updated.
     VariableData& get_input_data();
-    const VariableData& get_output_data() const;    
+    const VariableData& get_output_data() const;
+
+    void set_popup_data(const lua::I_variant* var);
+
+    // NOTE: the callable will be unbound when the popup is no longer be used (on popup_hide).
+    void bind_apply_callable(const godot::Callable& cb);
 
     void set_option_list_path(const godot::NodePath& path);
     godot::NodePath get_option_list_path() const;

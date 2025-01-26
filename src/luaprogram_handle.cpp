@@ -306,7 +306,7 @@ void LuaProgramHandle::_try_stop(on_stop_callback cb){
   resume_lua();
   _thread_handle->get_interface()->signal_stop();
 
-  _on_stopping_cb = cb;
+  _on_stopped_cb = cb;
 }
 
 void LuaProgramHandle::_create_stop_timer(){
@@ -336,13 +336,13 @@ void LuaProgramHandle::_on_stopped(){
   ResetEvent(_event_resumed);
   ResetEvent(_event_stopped);
 
-  _unload_runtime_handler();
-
   emit_signal(s_stopping);
 
-  if(_on_stopping_cb){
-    std::invoke(_on_stopping_cb, this);
-    _on_stopping_cb = NULL;
+  _unload_runtime_handler();
+
+  if(_on_stopped_cb){
+    std::invoke(_on_stopped_cb, this);
+    _on_stopped_cb = NULL;
   }
 }
 

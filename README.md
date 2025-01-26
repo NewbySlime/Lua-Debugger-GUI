@@ -48,11 +48,16 @@ Open Godot with this project, and build it in the **Project/Export** menu.
 - Pausing or Stopping while running thread blocked due to IO Library will cause the whole program to hang.
 
 ## Planned Features
+Note: the list is ordered by priority, top is highest priority, bottom is lowest priority.
 - ~~Breakpoints~~
-- Partial reveal for Variable Watcher
-- Editing using variable watcher
+- Partial reveal for VariableWatcher
+- Editing values using VariableWatcher
+- File editing
+- Stack view (containing currently running functions)
 - Seperating debugger and user programs by using IPC (in case of the Lua program does not respond)?
-- File editing?
+- Stats monitor
 
 ## Contributing
-Any contributions are appreciated, make sure to state your problems or features. You might also want to expect on some long delay in merging since I'm still in University.
+Any contributions are appreciated, make sure to state the problems in the app or wanted features. You might also want to expect on some short delay in merging since I'm still in University.
+
+As simple as reporting an issue also helps the project to grow!

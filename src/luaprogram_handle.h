@@ -77,7 +77,7 @@ class LuaProgramHandle: public godot::Node{
 
     std::string _current_file_path;
 
-    on_stop_callback _on_stopping_cb = NULL;
+    on_stop_callback _on_stopped_cb = NULL;
 
     bool _blocking_on_start = true;
     bool _initialized = false;

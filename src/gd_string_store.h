@@ -8,6 +8,10 @@
 
 class gd_string_store: public I_string_store{
   public:
+    gd_string_store(){}
+    gd_string_store(const char* cstr);
+    gd_string_store(const godot::String& gdstr);
+
     godot::String data;
 
     void append(const char* data) override;
