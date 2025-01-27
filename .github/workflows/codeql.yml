@@ -61,6 +61,15 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
 
+    # Initialize VS shell environment
+    - name: Visual Studio shell
+      # You may pin to the exact commit or the version.
+      # uses: egor-tensin/vs-shell@9a932a62d05192eae18ca370155cf877eecc2202
+      uses: egor-tensin/vs-shell@v2
+      with:
+        # Target architecture
+        arch: x64
+
     # Initialize MSVC environment
     - if: matrix.language == 'c-cpp'
       name: Setup MSVC Developer Command Prompt
@@ -97,7 +106,7 @@ jobs:
     # 📚 See https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsrun
     - if: matrix.language == 'c-cpp' && matrix.build-mode == 'manual'
       name: Compile Program
-      shell: cmd
+      shell: powershell
       run: |
         make --file=../lua_api.make --directory=src/Lua-CPPAPI f_use_msvc proc_compile
         scons
