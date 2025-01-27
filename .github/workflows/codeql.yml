@@ -98,9 +98,8 @@ jobs:
     - if: matrix.language == 'c-cpp' && matrix.build-mode == 'manual'
       name: Compile Program
       shell: bash
-      working-directory: ./
       run: |
-        make --file=src/lua_api.make --directory=src/Lua-CPPAPI f_use_msvc proc_compile
+        make --file=../lua_api.make --directory=src/Lua-CPPAPI f_use_msvc proc_compile
         scons
 
     - name: Perform CodeQL Analysis
