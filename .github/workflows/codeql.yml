@@ -107,7 +107,9 @@ jobs:
     - if: matrix.language == 'c-cpp' && matrix.build-mode == 'manual'
       name: Compile Program
       shell: powershell
+      working-directory: ./
       run: |
+        echo $PATH
         make --file=../lua_api.make --directory=src/Lua-CPPAPI f_use_msvc proc_compile
         scons
 
