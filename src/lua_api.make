@@ -1,5 +1,7 @@
 # USER DATA
 
+SHELL=/bin/bash
+
 OUTPUT_FILE= unit_test.exe
 
 OPTIONAL_DELETE_FILE= "../../godot_workspace/bin/*release*.dll" "../../godot_workspace/bin/*release*.lib"
