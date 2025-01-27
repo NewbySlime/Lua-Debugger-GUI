@@ -68,6 +68,11 @@ jobs:
       uses: TheMrMilchmann/setup-msvc-dev@v3.0.1
       with:
         arch: x64
+
+    # Initialize Sconstruct python package
+    - name: Setup Sconstruct Python Package
+      shell: python
+      run: -m pip install scons
     
     # Initializes the CodeQL tools for scanning.
     - name: Initialize CodeQL
@@ -91,6 +96,7 @@ jobs:
     - if: matrix.language == 'c-cpp' && matrix.build-mode == 'manual'
       name: Compile Program
       shell: bash
+      working-directory: ./
       run: |
         make --file=src/lua_api.make --directory=src/Lua-CPPAPI f_use_msvc proc_compile
         scons
