@@ -5,10 +5,10 @@ import sys
 
 # User variables
 build_path = "./godot_workspace/bin"
-source_path = "src"
-godotcpp_path = "godot-cpp"
+source_path = "./src"
+godotcpp_path = "./godot-cpp"
 
-cpplua_staticlib_path = "godot_workspace/bin/CPPAPI_static.lib"
+cpplua_staticlib_path = "./godot_workspace/bin/CPPAPI_static.lib"
 
 
 env = SConscript(godotcpp_path+"/SConstruct")
