@@ -20,6 +20,7 @@ class GlobalVariables: public godot::Node{
     static const char* s_global_value_set;
 
     static const char* key_popup_variable_setter_path;
+    static const char* key_context_menu_path;
 
   private:
     godot::Dictionary _variable_data;

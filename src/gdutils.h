@@ -1,6 +1,7 @@
 #ifndef GDUTILS_HEADER
 #define GDUTILS_HEADER
 
+#include "godot_cpp/classes/node.hpp"
 #include "godot_cpp/variant/color.hpp"
 #include "godot_cpp/variant/variant.hpp"
 
@@ -24,6 +25,26 @@ namespace gdutils{
       godot::Variant::Type parse_str_to_type(const godot::String& type_str) const;
       godot::String parse_type_to_str(godot::Variant::Type type) const;
   };
+
+
+  template<typename T_node> T_node* find_any_node(godot::Node* parent, bool recursive = false){
+    for(int i = 0; i < parent->get_child_count(); i++){
+      godot::Node* _child_node = parent->get_child(i);
+      if(_child_node->is_class(T_node::get_class_static()))
+        return dynamic_cast<T_node*>(_child_node);
+    }
+
+    if(recursive){
+      for(int i = 0; i < parent->get_child_count(); i++){
+        godot::Node* _child_node = parent->get_child(i);
+        godot::Node* _result = find_any_node<T_node>(_child_node, true);
+        if(_result)
+          return dynamic_cast<T_node*>(_result);
+      }
+    }
+
+    return NULL;
+  }
 }
 
 #endif

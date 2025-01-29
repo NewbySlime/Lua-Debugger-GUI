@@ -2,6 +2,7 @@
 #include "error_trigger.h"
 #include "gd_string_store.h"
 #include "logger.h"
+#include "signal_ownership.h"
 #include "strutil.h"
 #include "variable_watcher.h"
 
@@ -14,6 +15,7 @@
 #include "Lua-CPPAPI/Src/luaapi_stack.h"
 
 
+using namespace gdutils;
 using namespace godot;
 using namespace lua;
 using namespace lua::api;
@@ -36,11 +38,17 @@ void VariableWatcher::_bind_methods(){
   ClassDB::bind_method(D_METHOD("_item_activated"), &VariableWatcher::_item_activated);
 
   ClassDB::bind_method(D_METHOD("_on_setter_applied"), &VariableWatcher::_on_setter_applied);
+  ClassDB::bind_method(D_METHOD("_on_tree_button_clicked", "tree", "column", "id", "mouse_btn"), &VariableWatcher::_on_tree_button_clicked);
+  ClassDB::bind_method(D_METHOD("_on_context_menu_clicked", "id"), &VariableWatcher::_on_context_menu_clicked);
 
   ClassDB::bind_method(D_METHOD("get_variable_tree_path"), &VariableWatcher::get_variable_tree_path);
   ClassDB::bind_method(D_METHOD("set_variable_tree_path", "path"), &VariableWatcher::set_variable_tree_path);
 
+  ClassDB::bind_method(D_METHOD("get_context_menu_button_texture"), &VariableWatcher::get_context_menu_button_texture);
+  ClassDB::bind_method(D_METHOD("set_context_menu_button_texture", "texture"), &VariableWatcher::set_context_menu_button_texture);
+
   ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "variable_tree_path"), "set_variable_tree_path", "get_variable_tree_path");
+  ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "context_menu_button_texture", PROPERTY_HINT_RESOURCE_TYPE, "Texture"), "set_context_menu_button_texture", "get_context_menu_button_texture");
 }
 
 
@@ -137,10 +145,25 @@ void VariableWatcher::_item_collapsed(TreeItem* item){
 }
 
 void VariableWatcher::_item_selected(const Vector2 mouse_pos, int mouse_idx){
-  _variable_setter_do_popup();
+  TreeItem* _item = _variable_tree->get_selected();
+  _last_selected_id = _item->get_instance_id();
+
+  switch(mouse_idx){
+    break; case MOUSE_BUTTON_RIGHT:{
+      auto _iter = _vartree_map.find(_item->get_instance_id());
+      if(_iter == _vartree_map.end())
+        break;
+        
+      _open_context_menu();
+    }
+  }
 }
 
 void VariableWatcher::_item_activated(){
+  TreeItem* _item = _variable_tree->get_selected();
+  if(_item)
+    _last_selected_id = _item->get_instance_id();
+
   _variable_setter_do_popup();
 }
 
@@ -206,21 +229,58 @@ void VariableWatcher::_on_setter_applied(Node* node){
   cpplua_delete_variant(_value);
 }
 
+void VariableWatcher::_on_tree_button_clicked(TreeItem* item, int column, int id, int mouse_button){
+  _last_selected_id = item->get_instance_id();
+  switch(id){
+    break; case button_id_context_menu:
+      _open_context_menu();
+  }
+}
+
+void VariableWatcher::_on_context_menu_clicked(int id){
+  switch(id){
+    break; case context_menu_edit:
+      _variable_setter_do_popup(_last_selected_id);
+  }
+}
+
 
 void VariableWatcher::_variable_setter_do_popup(){
   if(!_lua_program_handle->is_running())
     return;
 
   TreeItem* _item = _variable_tree->get_selected();
+  if(!_item)
+    return;
 
   // TODO add error
-  auto _iter = _vartree_map.find(_item->get_instance_id());
+  _variable_setter_do_popup(_item->get_instance_id());
+}
+
+void VariableWatcher::_variable_setter_do_popup(uint64_t id){
+  auto _iter = _vartree_map.find(id);
   if(_iter == _vartree_map.end())
     return;
 
   _popup_variable_setter->set_popup_data(_iter->second->this_value);
   _popup_variable_setter->bind_apply_callable(Callable(this, "_on_setter_applied"));
   _popup_variable_setter->popup();
+}
+
+
+void VariableWatcher::_open_context_menu(){
+  PopupContextMenu::MenuData _data;
+  PopupContextMenu::MenuData::Part _tmp_part;
+    _tmp_part.item_type = PopupContextMenu::MenuData::type_normal;
+    _tmp_part.label = "Edit Variable";
+    _tmp_part.id = context_menu_edit;
+  _data.part_list.insert(_data.part_list.end(), _tmp_part);
+
+  SignalOwnership _sownership(Signal(_global_context_menu, "id_pressed"), Callable(this, "_on_context_menu_clicked"));
+  _sownership.replace_ownership();
+
+  _global_context_menu->init_menu(_data);
+  _global_context_menu->popup();
 }
 
 
@@ -336,6 +396,8 @@ void VariableWatcher::_reveal_tree_item(TreeItem* parent_item, I_table_var* var)
 TreeItem* VariableWatcher::_create_tree_item(TreeItem* parent_item){
   TreeItem* _result = _variable_tree->create_item(parent_item);
   _vartree_map[_result->get_instance_id()] = _create_vartree_metadata();
+
+  _result->add_button(0, _context_menu_button_texture, button_id_context_menu);
 
   return _result;
 }
@@ -506,6 +568,11 @@ void VariableWatcher::_ready(){
   if(!_popup_variable_setter)
     return;
 
+  NodePath _context_menu_path = _gvariables->get_global_value(GlobalVariables::key_context_menu_path);
+  _global_context_menu = _gvariables->get_node<PopupContextMenu>(_context_menu_path);
+  if(!_global_context_menu)
+    return;
+
   _variable_tree = get_node<Tree>(_variable_tree_path);
   if(!_variable_tree){
     GameUtils::Logger::print_err_static("[VariableWatcher] Cannot get Tree for Variable Inspector.");
@@ -514,6 +581,7 @@ void VariableWatcher::_ready(){
     goto on_error_label;
   }
 
+  _variable_tree->connect("button_clicked", Callable(this, "_on_tree_button_clicked"));
   _variable_tree->connect("item_collapsed", Callable(this, "_item_collapsed_safe"));
   _variable_tree->connect("item_mouse_selected", Callable(this, "_item_selected"));
   _variable_tree->connect("item_activated", Callable(this, "_item_activated"));
@@ -579,4 +647,13 @@ NodePath VariableWatcher::get_variable_tree_path() const{
 
 void VariableWatcher::set_variable_tree_path(NodePath path){
   _variable_tree_path = path;
+}
+
+
+Ref<Texture> VariableWatcher::get_context_menu_button_texture() const{
+  return _context_menu_button_texture;
+}
+
+void VariableWatcher::set_context_menu_button_texture(Ref<Texture> texture){
+  _context_menu_button_texture = texture;
 }

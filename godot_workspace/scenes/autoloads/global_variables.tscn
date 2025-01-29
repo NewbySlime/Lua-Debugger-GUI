@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://b4vpnvvq08h0j"]
+[gd_scene load_steps=3 format=3 uid="uid://b4vpnvvq08h0j"]
 
 [ext_resource type="PackedScene" uid="uid://cp50gbm7pm6et" path="res://scenes/popup_variable_setter.tscn" id="1_arkwe"]
+[ext_resource type="PackedScene" uid="uid://ebwywer78pes" path="res://scenes/context_menu.tscn" id="2_gxdmg"]
 
 [node name="GlobalVariables" type="GlobalVariables"]
 global_data = {
@@ -10,7 +11,13 @@ global_data = {
 "expected_config_vartype": {
 "ignore_internal_data": "Bool"
 },
+"global_context_menu_path": NodePath("ContextMenu"),
 "global_popup_variable_setter_path": NodePath("PopupMenu")
 }
 
 [node name="PopupMenu" parent="." instance=ExtResource("1_arkwe")]
+visible = false
+
+[node name="ContextMenu" parent="." instance=ExtResource("2_gxdmg")]
+visible = false
+unfocusable = false

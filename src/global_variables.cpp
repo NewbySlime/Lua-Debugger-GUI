@@ -1,9 +1,11 @@
+#include "error_trigger.h"
 #include "global_variables.h"
 #include "logger.h"
+#include "popup_context_menu.h"
 #include "popup_variable_setter.h"
-#include "error_trigger.h"
 
 #include "godot_cpp/classes/engine.hpp"
+#include "godot_cpp/classes/popup_menu.hpp"
 #include "godot_cpp/classes/scene_tree.hpp"
 
 using namespace ErrorTrigger;
@@ -16,6 +18,7 @@ const char* GlobalVariables::singleton_path = "/root/GlobalUserVariables";
 const char* GlobalVariables::s_global_value_set = "value_set";
 
 const char* GlobalVariables::key_popup_variable_setter_path = "global_popup_variable_setter_path";
+const char* GlobalVariables::key_context_menu_path = "global_context_menu_path";
 
 
 void GlobalVariables::_bind_methods(){
@@ -40,6 +43,15 @@ void GlobalVariables::_check_variable_data(bool as_warning){
     _failed = true;
   }
 } // enclsoure closing
+
+{ // enclosure for scoping
+  NodePath _test_path = get_global_value(key_context_menu_path);
+  PopupContextMenu* _test = get_node<PopupContextMenu>(_test_path);
+  if(!_test){
+    log_func("[GlobalVariables] Global PopupContextMenu is not a valid object or not yet assigned.");
+    _failed = true;
+  }  
+} // enclosure closing
 
   if(_failed && !as_warning){
     trigger_generic_error_message();

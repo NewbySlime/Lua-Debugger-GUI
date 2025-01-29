@@ -49,13 +49,14 @@ Open Godot with this project, and build it in the **Project/Export** menu.
 
 ## Planned Features
 Note: the list is ordered by priority, top is highest priority, bottom is lowest priority.
-- ~~Breakpoints~~
-- Partial reveal for VariableWatcher
-- Editing values using VariableWatcher
+- Reference List (holding Table and Function values as reference)
+- Editing values using VariableWatcher (not yet for Table and Functions)
 - File editing
 - Stack view (containing currently running functions)
 - Seperating debugger and user programs by using IPC (in case of the Lua program does not respond)?
 - Stats monitor
+- ~~Breakpoints~~
+- ~~Partial reveal for VariableWatcher~~
 
 ## Contributing
 Any contributions are appreciated, make sure to state the problems in the app or wanted features. You might also want to expect on some short delay in merging since I'm still in University.

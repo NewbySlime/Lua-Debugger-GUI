@@ -6,9 +6,11 @@
 #include "luaprogram_handle.h"
 #include "luavariable_setter.h"
 #include "option_control.h"
+#include "popup_context_menu.h"
 #include "popup_variable_setter.h"
 
 #include "godot_cpp/classes/control.hpp"
+#include "godot_cpp/classes/popup_menu.hpp"
 #include "godot_cpp/classes/tree.hpp"
 #include "godot_cpp/variant/node_path.hpp"
 
@@ -19,6 +21,15 @@ class VariableWatcher: public godot::Control{
   GDCLASS(VariableWatcher, godot::Control)
 
   private:
+    enum _button_id_enum{
+      button_id_context_menu
+    };
+
+    enum _context_menu_id_enum{
+      context_menu_edit
+    };
+
+
     struct _variable_tree_item_metadata{
       public:
         lua::util::IVariableSetter* var_setter = NULL;
@@ -27,6 +38,7 @@ class VariableWatcher: public godot::Control{
 
         bool already_revealed = false;
     };
+
 
     std::set<lua::comparison_variant> _filter_key = {
       lua::string_var("(*temporary)")
@@ -41,16 +53,20 @@ class VariableWatcher: public godot::Control{
 
     godot::NodePath _variable_tree_path;
     godot::Tree* _variable_tree = NULL;
+    godot::Ref<godot::Texture> _context_menu_button_texture;
 
     GlobalVariables* _gvariables;
 
     std::vector<lua::util::IVariableSetter*> _setter_list;
     std::map<uint64_t, _variable_tree_item_metadata*> _vartree_map;
     PopupVariableSetter* _popup_variable_setter;
+    PopupContextMenu* _global_context_menu;
 
     bool _ignore_internal_variables = false;
 
     std::vector<godot::Callable> _update_callable_list;
+
+    uint64_t _last_selected_id = 0;
 
 
     void _on_global_variable_changed(const godot::String& key, const godot::Variant& value);
@@ -70,8 +86,13 @@ class VariableWatcher: public godot::Control{
     void _item_activated();
 
     void _on_setter_applied(godot::Node* node);
+    void _on_tree_button_clicked(godot::TreeItem* item, int column, int id, int mouse_button);
+    void _on_context_menu_clicked(int id);
 
     void _variable_setter_do_popup();
+    void _variable_setter_do_popup(uint64_t id);
+
+    void _open_context_menu();
 
     void _update_tree_item(godot::TreeItem* parent_item, lua::debug::I_variable_watcher* watcher, bool as_global);
     // NOTE: don't use any variant object from the metedata, as it will be deleted when updated.
@@ -109,6 +130,9 @@ class VariableWatcher: public godot::Control{
 
     godot::NodePath get_variable_tree_path() const;
     void set_variable_tree_path(godot::NodePath path);
+
+    godot::Ref<godot::Texture> get_context_menu_button_texture() const;
+    void set_context_menu_button_texture(godot::Ref<godot::Texture> texture);
 };
 
 #endif

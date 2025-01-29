@@ -1,4 +1,4 @@
-[gd_scene load_steps=31 format=3 uid="uid://cgjecodaf2s77"]
+[gd_scene load_steps=32 format=3 uid="uid://cgjecodaf2s77"]
 
 [ext_resource type="PackedScene" uid="uid://bbpgcr0g21epu" path="res://scenes/clone/code_context.tscn" id="1_b2mtp"]
 [ext_resource type="SystemFont" uid="uid://c8jm14y54ky2t" path="res://resource/styles/text/code_font.tres" id="1_n2lrs"]
@@ -14,6 +14,7 @@
 [ext_resource type="Texture2D" uid="uid://y5rx4xwwk3ng" path="res://resource/images/logo/StopLogo.png" id="11_qgwsp"]
 [ext_resource type="Texture2D" uid="uid://b6ymps4xmwpr0" path="res://resource/images/logo/RestartLogo.png" id="12_ifwq8"]
 [ext_resource type="Texture2D" uid="uid://df7qxoobafca8" path="res://resource/images/logo/SettingsLogo.png" id="14_dify4"]
+[ext_resource type="Texture2D" uid="uid://bvrouncobb0s0" path="res://resource/images/logo/ThreeHorizontalDot-32px-32px.png" id="14_elorr"]
 [ext_resource type="Texture2D" uid="uid://d060ofcipcuyv" path="res://resource/images/logo/SettingsBackLogo.png" id="15_o08uj"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1wdwd"]
@@ -391,6 +392,7 @@ size_flags_vertical = 3
 
 [node name="VariableInspector" type="VariableWatcher" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/ScrollContainer"]
 variable_tree_path = NodePath("VariableInspector")
+context_menu_button_texture = ExtResource("14_elorr")
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
