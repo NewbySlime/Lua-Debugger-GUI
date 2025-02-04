@@ -9,126 +9,125 @@ size_flags_vertical = 3
 
 [node name="GroupInvoker" type="GroupInvoker" parent="."]
 group_node_data = {
-"boolean_data": [NodePath("../VBoxContainer/ScrollContainer/MarginContainer/VBoxContainer/BooleanEdit")],
-"global_key_data": [NodePath("../VBoxContainer/GlobalKeyEdit")],
-"local_key_data": [NodePath("../VBoxContainer/LocalKeyEdit")],
-"number_data": [NodePath("../VBoxContainer/ScrollContainer/MarginContainer/VBoxContainer/NumberEdit")],
-"string_data": [NodePath("../VBoxContainer/ScrollContainer/MarginContainer/VBoxContainer/StringEdit")]
+"boolean_data": [NodePath("../MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/BooleanEdit")],
+"local_key_data": [NodePath("../MarginContainer/VBoxContainer/LocalKeyEdit")],
+"number_data": [NodePath("../MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/NumberEdit")],
+"string_data": [NodePath("../MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/StringEdit")],
+"variable_key_data": [NodePath("../MarginContainer/VBoxContainer/VariableKeyEdit")]
 }
 
-[node name="VBoxContainer" type="VBoxContainer" parent="."]
+[node name="MarginContainer" type="MarginContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 8
 
-[node name="Title" type="Label" parent="VBoxContainer"]
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
 text = "Set Variable"
 horizontal_alignment = 1
 
-[node name="LocalKeyEdit" type="OptionValueControl" parent="VBoxContainer"]
+[node name="LocalKeyEdit" type="OptionValueControl" parent="MarginContainer/VBoxContainer"]
 option_key = "local_key_data"
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="KeyContainer" type="HBoxContainer" parent="VBoxContainer/LocalKeyEdit"]
+[node name="KeyContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer/LocalKeyEdit"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 theme_override_constants/separation = 40
 
-[node name="Label" type="Label" parent="VBoxContainer/LocalKeyEdit/KeyContainer"]
+[node name="Label" type="Label" parent="MarginContainer/VBoxContainer/LocalKeyEdit/KeyContainer"]
 layout_mode = 2
 text = "Key"
 
-[node name="LineEdit" type="OptionButton" parent="VBoxContainer/LocalKeyEdit/KeyContainer"]
+[node name="LineEdit" type="OptionButton" parent="MarginContainer/VBoxContainer/LocalKeyEdit/KeyContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="GlobalKeyEdit" type="OptionValueControl" parent="VBoxContainer"]
-option_key = "global_key_data"
+[node name="VariableKeyEdit" type="OptionValueControl" parent="MarginContainer/VBoxContainer"]
+option_key = "variable_key_data"
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="KeyContainer" type="HBoxContainer" parent="VBoxContainer/GlobalKeyEdit"]
+[node name="KeyContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer/VariableKeyEdit"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 theme_override_constants/separation = 40
 
-[node name="Label" type="Label" parent="VBoxContainer/GlobalKeyEdit/KeyContainer"]
+[node name="Label" type="Label" parent="MarginContainer/VBoxContainer/VariableKeyEdit/KeyContainer"]
 layout_mode = 2
 text = "Key"
 
-[node name="LineEdit" type="LineEdit" parent="VBoxContainer/GlobalKeyEdit/KeyContainer"]
+[node name="LineEdit" type="LineEdit" parent="MarginContainer/VBoxContainer/VariableKeyEdit/KeyContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer"]
+[node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="MarginContainer" type="MarginContainer" parent="VBoxContainer/ScrollContainer"]
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_constants/margin_left = 8
-theme_override_constants/margin_top = 10
-theme_override_constants/margin_right = 8
-theme_override_constants/margin_bottom = 10
-
-[node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer/ScrollContainer/MarginContainer"]
-layout_mode = 2
 size_flags_vertical = 0
 theme_override_constants/separation = 5
 
-[node name="EnumButton" type="OptionValueControl" parent="VBoxContainer/ScrollContainer/MarginContainer/VBoxContainer"]
+[node name="EnumButton" type="OptionValueControl" parent="MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer"]
 option_key = "__type_enum_button"
 layout_mode = 2
 
-[node name="OptionButton" type="OptionButton" parent="VBoxContainer/ScrollContainer/MarginContainer/VBoxContainer/EnumButton"]
+[node name="OptionButton" type="OptionButton" parent="MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/EnumButton"]
 layout_mode = 2
 size_flags_horizontal = 3
 alignment = 1
 
-[node name="StringEdit" type="OptionValueControl" parent="VBoxContainer/ScrollContainer/MarginContainer/VBoxContainer"]
+[node name="StringEdit" type="OptionValueControl" parent="MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer"]
 option_key = "string_data"
 layout_mode = 2
 
-[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/ScrollContainer/MarginContainer/VBoxContainer/StringEdit"]
+[node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/StringEdit"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Label" type="Label" parent="VBoxContainer/ScrollContainer/MarginContainer/VBoxContainer/StringEdit/HBoxContainer"]
+[node name="Label" type="Label" parent="MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/StringEdit/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "String
 "
 
-[node name="TextEdit" type="TextEdit" parent="VBoxContainer/ScrollContainer/MarginContainer/VBoxContainer/StringEdit/HBoxContainer"]
+[node name="TextEdit" type="TextEdit" parent="MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/StringEdit/HBoxContainer"]
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="NumberEdit" type="OptionValueControl" parent="VBoxContainer/ScrollContainer/MarginContainer/VBoxContainer"]
+[node name="NumberEdit" type="OptionValueControl" parent="MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer"]
 option_key = "number_data"
 layout_mode = 2
 
-[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/ScrollContainer/MarginContainer/VBoxContainer/NumberEdit"]
+[node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/NumberEdit"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Label" type="Label" parent="VBoxContainer/ScrollContainer/MarginContainer/VBoxContainer/NumberEdit/HBoxContainer"]
+[node name="Label" type="Label" parent="MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/NumberEdit/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Number
 "
 
-[node name="SpinBox" type="SpinBox" parent="VBoxContainer/ScrollContainer/MarginContainer/VBoxContainer/NumberEdit/HBoxContainer"]
+[node name="SpinBox" type="SpinBox" parent="MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/NumberEdit/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 step = 0.1
@@ -136,46 +135,46 @@ allow_greater = true
 allow_lesser = true
 custom_arrow_step = 0.1
 
-[node name="BooleanEdit" type="OptionValueControl" parent="VBoxContainer/ScrollContainer/MarginContainer/VBoxContainer"]
+[node name="BooleanEdit" type="OptionValueControl" parent="MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer"]
 option_key = "boolean_data"
 layout_mode = 2
 
-[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/ScrollContainer/MarginContainer/VBoxContainer/BooleanEdit"]
+[node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/BooleanEdit"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Label" type="Label" parent="VBoxContainer/ScrollContainer/MarginContainer/VBoxContainer/BooleanEdit/HBoxContainer"]
+[node name="Label" type="Label" parent="MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/BooleanEdit/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Boolean
 "
 
-[node name="CheckButton" type="CheckButton" parent="VBoxContainer/ScrollContainer/MarginContainer/VBoxContainer/BooleanEdit/HBoxContainer"]
+[node name="CheckButton" type="CheckButton" parent="MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/BooleanEdit/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 6
 
-[node name="Padding" type="MarginContainer" parent="VBoxContainer"]
+[node name="Padding" type="MarginContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
 theme_override_constants/margin_top = 32
 
-[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer"]
+[node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 8
 theme_override_constants/separation = 20
 alignment = 1
 
-[node name="AceeptButton" type="OptionValueControl" parent="VBoxContainer/HBoxContainer"]
+[node name="AceeptButton" type="OptionValueControl" parent="MarginContainer/VBoxContainer/HBoxContainer"]
 option_key = "__accept_button"
 layout_mode = 2
 
-[node name="Button" type="Button" parent="VBoxContainer/HBoxContainer/AceeptButton"]
+[node name="Button" type="Button" parent="MarginContainer/VBoxContainer/HBoxContainer/AceeptButton"]
 layout_mode = 2
 text = "Accept"
 
-[node name="CancelButton" type="OptionValueControl" parent="VBoxContainer/HBoxContainer"]
+[node name="CancelButton" type="OptionValueControl" parent="MarginContainer/VBoxContainer/HBoxContainer"]
 option_key = "__cancel_button"
 layout_mode = 2
 
-[node name="Button" type="Button" parent="VBoxContainer/HBoxContainer/CancelButton"]
+[node name="Button" type="Button" parent="MarginContainer/VBoxContainer/HBoxContainer/CancelButton"]
 layout_mode = 2
 text = "Cancel"

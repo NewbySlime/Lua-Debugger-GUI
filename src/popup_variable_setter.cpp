@@ -23,7 +23,7 @@ const char* PopupVariableSetter::s_applied = "applied";
 const char* PopupVariableSetter::s_cancelled = "cancelled";
 const char* PopupVariableSetter::s_mode_type_changed = "mode_type_changed";
 
-const char* PopupVariableSetter::key_global_key_data = "global_key_data";
+const char* PopupVariableSetter::key_variable_key_data = "variable_key_data";
 const char* PopupVariableSetter::key_local_key_data = "local_key_data";
 const char* PopupVariableSetter::key_string_data = "string_data";
 const char* PopupVariableSetter::key_number_data = "number_data";
@@ -165,11 +165,11 @@ void PopupVariableSetter::_reset_enum_button_config(){
 void PopupVariableSetter::_update_setter_ui(){
   if(_edit_flag & edit_add_key_edit){
     _ginvoker->invoke(key_local_key_data, "set_visible", (bool)(_edit_flag & edit_local_key));
-    _ginvoker->invoke(key_global_key_data, "set_visible", !(bool)(_edit_flag & edit_local_key));
+    _ginvoker->invoke(key_variable_key_data, "set_visible", !(bool)(_edit_flag & edit_local_key));
   }
   else{
     _ginvoker->invoke(key_local_key_data, "set_visible", false);
-    _ginvoker->invoke(key_global_key_data, "set_visible", false);
+    _ginvoker->invoke(key_variable_key_data, "set_visible", false);
   }
 
   if(_edit_flag & edit_clear_on_popup)
@@ -368,12 +368,12 @@ String PopupVariableSetter::get_local_key_applied() const{
 }
 
 
-void PopupVariableSetter::set_global_key(const String& key){
-  _option_list->set_value_data(key_global_key_data, key);
+void PopupVariableSetter::set_variable_key(const String& key){
+  _option_list->set_value_data(key_variable_key_data, key);
 }
 
-String PopupVariableSetter::get_global_key() const{
-  return _option_list->get_value_data(key_global_key_data);
+String PopupVariableSetter::get_variable_key() const{
+  return _option_list->get_value_data(key_variable_key_data);
 }
 
 

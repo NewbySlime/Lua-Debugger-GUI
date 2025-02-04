@@ -26,7 +26,7 @@ class PopupVariableSetter: public godot::PopupPanel{
     static const char* s_mode_type_changed;
 
     // This assumes that the parent of the node will be hidden if not used.
-    static const char* key_global_key_data;
+    static const char* key_variable_key_data;
     // This assumes that the parent of the node will be hidden if not used.
     static const char* key_local_key_data;
     static const char* key_string_data;
@@ -134,8 +134,8 @@ class PopupVariableSetter: public godot::PopupPanel{
     void set_local_key_choice(const godot::PackedStringArray& key_list);
     godot::String get_local_key_applied() const;
 
-    void set_global_key(const godot::String& key);
-    godot::String get_global_key() const;
+    void set_variable_key(const godot::String& key);
+    godot::String get_variable_key() const;
 
     void set_option_list_path(const godot::NodePath& path);
     godot::NodePath get_option_list_path() const;
