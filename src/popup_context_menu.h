@@ -20,7 +20,9 @@ class PopupContextMenu: public godot::PopupMenu{
         type_icon_check,
         type_radio_check,
         // TODO type_submenu_node,
-        type_icon_radio_check
+        type_icon_radio_check,
+
+        type_separator
       };
 
       struct Part{
@@ -41,8 +43,8 @@ class PopupContextMenu: public godot::PopupMenu{
 
 
   private:
+    void _on_popup();
     void _on_id_pressed(int id);
-
 
   protected:
     static void _bind_methods();

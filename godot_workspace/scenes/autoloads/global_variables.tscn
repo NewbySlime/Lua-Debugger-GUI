@@ -16,8 +16,12 @@ global_data = {
 }
 
 [node name="PopupMenu" parent="." instance=ExtResource("1_arkwe")]
+initial_position = 0
+size = Vector2i(328, 248)
 visible = false
 
 [node name="ContextMenu" parent="." instance=ExtResource("2_gxdmg")]
-visible = false
+size = Vector2i(20, 8)
 unfocusable = false
+content_scale_mode = 1
+content_scale_aspect = 4

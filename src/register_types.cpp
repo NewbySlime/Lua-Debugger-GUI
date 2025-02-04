@@ -12,6 +12,7 @@
 #include "execution_context.h"
 #include "focus_area.h"
 #include "global_variables.h"
+#include "group_invoker.h"
 #include "liblua_handle.h"
 #include "luaprogram_handle.h"
 #include "logger.h"
@@ -43,6 +44,7 @@ void initialize_gdextension_module(ModuleInitializationLevel p_level) {
   ClassDB::register_class<FocusArea>();
   ClassDB::register_class<GameUtils::Logger>();
   ClassDB::register_class<GlobalVariables>();
+  ClassDB::register_class<GroupInvoker>();
   ClassDB::register_class<LuaProgramHandle>();
   ClassDB::register_class<LibLuaHandle>();
   ClassDB::register_class<NodeData>();

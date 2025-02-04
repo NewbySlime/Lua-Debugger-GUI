@@ -7,9 +7,15 @@ using namespace godot;
 
 
 void PopupContextMenu::_bind_methods(){
+  ClassDB::bind_method(D_METHOD("_on_popup"), &PopupContextMenu::_on_popup);
   ClassDB::bind_method(D_METHOD("_on_id_pressed", "id"), &PopupContextMenu::_on_id_pressed);
 }
 
+
+void PopupContextMenu::_on_popup(){
+  // adjust size to contained items
+  set_size(Vector2(0, 0));
+}
 
 void PopupContextMenu::_on_id_pressed(int id){
   hide();
@@ -21,11 +27,15 @@ void PopupContextMenu::_ready(){
   if(_engine->is_editor_hint())
     return;
 
+  connect("about_to_popup", Callable(this, "_on_popup"));
   connect("id_pressed", Callable(this, "_on_id_pressed"));
 }
 
 
 void PopupContextMenu::init_menu(const MenuData& data){
+  // resize to min size
+  set_size(Vector2(0, 0));
+
   clear(true);
   for(const MenuData::Part& part: data.part_list){
     switch(part.item_type){
@@ -52,6 +62,9 @@ void PopupContextMenu::init_menu(const MenuData& data){
 
       break; case MenuData::type_icon_radio_check:
         add_icon_radio_check_item(part.icon_texture, part.label, part.id, part.k_accel);
+
+      break; case MenuData::type_separator:
+        add_separator(part.label, part.id);
     }
   }
 }

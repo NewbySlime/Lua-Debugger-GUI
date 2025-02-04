@@ -26,12 +26,24 @@ class VariableWatcher: public godot::Control{
     };
 
     enum _context_menu_id_enum{
-      context_menu_edit
+      context_menu_edit,
+      context_menu_add,
+      context_menu_copy,
+      context_menu_remove
     };
 
+    enum _metadata_flag{
+      metadata_global_item = 0b100,
+      metadata_local_item = 0b010,
+      metadata_valid_mutable_item = 0b001
+    };
 
     struct _variable_tree_item_metadata{
       public:
+        godot::TreeItem* item = NULL;
+
+        uint64_t _mflag = 0;
+
         lua::util::IVariableSetter* var_setter = NULL;
         lua::I_variant* this_key = NULL;
         lua::I_variant* this_value = NULL;
@@ -55,6 +67,9 @@ class VariableWatcher: public godot::Control{
     godot::Tree* _variable_tree = NULL;
     godot::Ref<godot::Texture> _context_menu_button_texture;
 
+    godot::TreeItem* _global_item = NULL;
+    godot::TreeItem* _local_item = NULL;
+
     GlobalVariables* _gvariables;
 
     std::vector<lua::util::IVariableSetter*> _setter_list;
@@ -67,6 +82,7 @@ class VariableWatcher: public godot::Control{
     std::vector<godot::Callable> _update_callable_list;
 
     uint64_t _last_selected_id = 0;
+    godot::TreeItem* _last_selected_item = NULL;
 
 
     void _on_global_variable_changed(const godot::String& key, const godot::Variant& value);
@@ -89,20 +105,22 @@ class VariableWatcher: public godot::Control{
     void _on_tree_button_clicked(godot::TreeItem* item, int column, int id, int mouse_button);
     void _on_context_menu_clicked(int id);
 
-    void _variable_setter_do_popup();
-    void _variable_setter_do_popup(uint64_t id);
+    void _variable_setter_do_popup(uint64_t flag = 0);
+    void _variable_setter_do_popup_id(uint64_t id, uint64_t flag = 0);
 
     void _open_context_menu();
 
+    void _update_variable_tree();
     void _update_tree_item(godot::TreeItem* parent_item, lua::debug::I_variable_watcher* watcher, bool as_global);
     // NOTE: don't use any variant object from the metedata, as it will be deleted when updated.
     void _update_tree_item(godot::TreeItem* parent_item, const lua::I_variant* key_var, lua::I_variant* var);
+
     void _reveal_tree_item(godot::TreeItem* parent_item, lua::I_table_var* var);
 
     godot::TreeItem* _create_tree_item(godot::TreeItem* parent_item);
-    _variable_tree_item_metadata* _create_vartree_metadata();
+    _variable_tree_item_metadata* _create_vartree_metadata(godot::TreeItem* item);
 
-    void _update_variable_tree();
+    void _remove_item(godot::TreeItem* item);
 
     void _clear_variable_tree();
     void _clear_vsetter_list();

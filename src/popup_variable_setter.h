@@ -1,12 +1,14 @@
 #ifndef POPUP_VARIABLE_SETTER_HEADER
 #define POPUP_VARIABLE_SETTER_HEADER
 
-#include "Lua-CPPAPI/Src/luavariant.h"
+#include "group_invoker.h"
 #include "option_list_menu.h"
 
 #include "godot_cpp/classes/button.hpp"
 #include "godot_cpp/classes/option_button.hpp"
 #include "godot_cpp/classes/popup_panel.hpp"
+
+#include "Lua-CPPAPI/Src/luavariant.h"
 
 #include "map"
 
@@ -15,6 +17,7 @@ class PopupVariableSetter: public godot::PopupPanel{
   GDCLASS(PopupVariableSetter, godot::PopupPanel)
 
   public:
+    // Note: Use SignalOwnership
     static const char* s_applied;
     static const char* s_cancelled;
 
@@ -22,11 +25,15 @@ class PopupVariableSetter: public godot::PopupPanel{
     //  - INT: new SetterMode
     static const char* s_mode_type_changed;
 
+    // This assumes that the parent of the node will be hidden if not used.
+    static const char* key_global_key_data;
+    // This assumes that the parent of the node will be hidden if not used.
+    static const char* key_local_key_data;
     static const char* key_string_data;
     static const char* key_number_data;
     static const char* key_boolean_data;
 
-    static const char* key_enum_button;
+    static const char* key_type_enum_button;
     static const char* key_accept_button;
     static const char* key_cancel_button;
 
@@ -37,9 +44,16 @@ class PopupVariableSetter: public godot::PopupPanel{
       setter_mode_bool
     };
 
+    enum EditFlag{
+      edit_flag_none = 0,
+      edit_add_key_edit = 0b001,
+      edit_local_key = 0b010,       // if not set, UI will be setup for global key
+      edit_clear_on_popup = 0b100
+    };
+
     struct VariableData{
       public:
-        int setter_mode;
+        int setter_mode = setter_mode_number;
 
         double number_data = 0;
         std::string string_data;
@@ -48,35 +62,26 @@ class PopupVariableSetter: public godot::PopupPanel{
 
   
   private:
-    struct _mode_node_data{
-      public:
-        struct _node_data{
-          public:
-            godot::Callable set_visible_funcs;
-        };
-
-        std::map<uint64_t, _node_data*> node_data_map;
-    };
-
     godot::NodePath _option_list_path;
-    godot::Dictionary _mode_node_list;
+
+    GroupInvoker* _ginvoker;
 
     VariableData _data_init;
     VariableData _data_output;
 
-    SetterMode _current_mode;
+    uint32_t _current_mode;
 
-    OptionListMenu* _option_list;
+    OptionListMenu* _option_list; 
 
-    godot::OptionButton* _enum_button;
     godot::Button* _accept_button;
     godot::Button* _cancel_button;
 
-    godot::Callable _apply_callable;
+    std::map<int, godot::String> _local_key_lookup;
 
-    std::map<int, _mode_node_data*> _mode_node_map;
+    godot::String _key_name;
+    uint32_t _edit_flag;
 
-    bool _enable_enum_button_signal = true;
+    bool _type_enum_button_signal = false;
     bool _applied = false;
 
 
@@ -84,19 +89,16 @@ class PopupVariableSetter: public godot::PopupPanel{
     void _on_value_set_string_data(const godot::Variant& data);
     void _on_value_set_number_data(const godot::Variant& data);
     void _on_value_set_bool_data(const godot::Variant& data);
+    void _on_value_set_type_enum_data(const godot::Variant& data);
 
     void _on_accept_button_pressed();
     void _on_cancel_button_pressed();
     void _on_popup();
     void _on_popup_hide();
 
-    void _on_enum_button_selected(int idx);
-
-    void _try_parse_mode_node_list();
-
     void _reset_enum_button_config();
 
-    void _clear_mode_node_map();
+  void _update_setter_ui();
 
     static void _code_initiate();
 
@@ -104,30 +106,39 @@ class PopupVariableSetter: public godot::PopupPanel{
     static void _bind_methods();
 
   public:
-    ~PopupVariableSetter();
-
     void _ready() override;
 
-    void set_mode_type(SetterMode mode);
-    SetterMode get_mode_type() const;
+    void set_mode_type(uint32_t mode);
+    uint32_t get_mode_type() const;
 
+    // DEPRECATED, always update on popup
     // VariableData::setter_mode is ignored when updated.
     void update_input_data_ui();
 
     // VariableData::setter_mode is ignored when updated.
     VariableData& get_input_data();
+    void clear_input_data();
+
     const VariableData& get_output_data() const;
 
-    void set_popup_data(const lua::I_variant* var);
+    // if var NULL, it will reset
+    void set_popup_data(const lua::I_variant* var = NULL);
 
+    // DEPRECATED, use SignalOwnership on s_applied
     // NOTE: the callable will be unbound when the popup is no longer be used (on popup_hide).
-    void bind_apply_callable(const godot::Callable& cb);
+    //void bind_apply_callable(const godot::Callable& cb);
+
+    void set_edit_flag(uint32_t flag);
+    uint32_t get_edit_flag() const;
+
+    void set_local_key_choice(const godot::PackedStringArray& key_list);
+    godot::String get_local_key_applied() const;
+
+    void set_global_key(const godot::String& key);
+    godot::String get_global_key() const;
 
     void set_option_list_path(const godot::NodePath& path);
     godot::NodePath get_option_list_path() const;
-
-    void set_mode_node_list(const godot::Dictionary& node_list);
-    godot::Dictionary get_mode_node_list() const;
 };
 
 #endif

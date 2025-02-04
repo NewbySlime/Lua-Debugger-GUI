@@ -7,6 +7,15 @@ offset_bottom = 240.0
 size_flags_horizontal = 6
 size_flags_vertical = 3
 
+[node name="GroupInvoker" type="GroupInvoker" parent="."]
+group_node_data = {
+"boolean_data": [NodePath("../VBoxContainer/ScrollContainer/MarginContainer/VBoxContainer/BooleanEdit")],
+"global_key_data": [NodePath("../VBoxContainer/GlobalKeyEdit")],
+"local_key_data": [NodePath("../VBoxContainer/LocalKeyEdit")],
+"number_data": [NodePath("../VBoxContainer/ScrollContainer/MarginContainer/VBoxContainer/NumberEdit")],
+"string_data": [NodePath("../VBoxContainer/ScrollContainer/MarginContainer/VBoxContainer/StringEdit")]
+}
+
 [node name="VBoxContainer" type="VBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
@@ -19,6 +28,44 @@ grow_vertical = 2
 layout_mode = 2
 text = "Set Variable"
 horizontal_alignment = 1
+
+[node name="LocalKeyEdit" type="OptionValueControl" parent="VBoxContainer"]
+option_key = "local_key_data"
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="KeyContainer" type="HBoxContainer" parent="VBoxContainer/LocalKeyEdit"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_constants/separation = 40
+
+[node name="Label" type="Label" parent="VBoxContainer/LocalKeyEdit/KeyContainer"]
+layout_mode = 2
+text = "Key"
+
+[node name="LineEdit" type="OptionButton" parent="VBoxContainer/LocalKeyEdit/KeyContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="GlobalKeyEdit" type="OptionValueControl" parent="VBoxContainer"]
+option_key = "global_key_data"
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="KeyContainer" type="HBoxContainer" parent="VBoxContainer/GlobalKeyEdit"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_constants/separation = 40
+
+[node name="Label" type="Label" parent="VBoxContainer/GlobalKeyEdit/KeyContainer"]
+layout_mode = 2
+text = "Key"
+
+[node name="LineEdit" type="LineEdit" parent="VBoxContainer/GlobalKeyEdit/KeyContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer"]
 layout_mode = 2
@@ -40,7 +87,7 @@ size_flags_vertical = 0
 theme_override_constants/separation = 5
 
 [node name="EnumButton" type="OptionValueControl" parent="VBoxContainer/ScrollContainer/MarginContainer/VBoxContainer"]
-option_key = "__enum_button"
+option_key = "__type_enum_button"
 layout_mode = 2
 
 [node name="OptionButton" type="OptionButton" parent="VBoxContainer/ScrollContainer/MarginContainer/VBoxContainer/EnumButton"]

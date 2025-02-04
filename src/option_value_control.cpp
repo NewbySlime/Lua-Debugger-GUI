@@ -8,6 +8,7 @@
 #include "godot_cpp/classes/base_button.hpp"
 #include "godot_cpp/classes/engine.hpp"
 #include "godot_cpp/classes/line_edit.hpp"
+#include "godot_cpp/classes/option_button.hpp"
 #include "godot_cpp/classes/range.hpp"
 #include "godot_cpp/classes/scene_tree.hpp"
 #include "godot_cpp/classes/text_edit.hpp"
@@ -26,6 +27,7 @@ const char* OptionValueControl::s_value_set = "value_set";
 enum base_class_code{
   base_class_Nil,
   base_class_Range,
+  base_class_OptionButton,
   base_class_Button,
   base_class_LineEdit,
   base_class_TextEdit
@@ -47,6 +49,7 @@ struct option_parser_data{
 static base_class_code _get_node_base_class(godot::Node* obj){
   option_parser_data _parser_list[] = {
     option_parser_data(Range::get_class_static(), base_class_Range),
+    option_parser_data(OptionButton::get_class_static(), base_class_OptionButton),
     option_parser_data(BaseButton::get_class_static(), base_class_Button),
     option_parser_data(LineEdit::get_class_static(), base_class_LineEdit),
     option_parser_data(TextEdit::get_class_static(), base_class_TextEdit)
@@ -66,6 +69,7 @@ static base_class_code _get_node_base_class(godot::Node* obj){
 
 void OptionValueControl::_bind_methods(){
   ClassDB::bind_method(D_METHOD("_on_changed_range", "num"), &OptionValueControl::_on_changed_range);
+  ClassDB::bind_method(D_METHOD("_on_changed_option_button", "idx"), &OptionValueControl::_on_changed_option_button);
   ClassDB::bind_method(D_METHOD("_on_changed_button", "toggle"), &OptionValueControl::_on_changed_button);
   ClassDB::bind_method(D_METHOD("_on_changed_line_edit", "new_text"), &OptionValueControl::_on_changed_line_edit);
   ClassDB::bind_method(D_METHOD("_on_changed_text_edit"), &OptionValueControl::_on_changed_text_edit);
@@ -87,6 +91,10 @@ void OptionValueControl::_on_changed_button(bool toggle){
   emit_signal(s_value_set, _option_key, toggle);
 }
 
+void OptionValueControl::_on_changed_option_button(int idx){
+  emit_signal(s_value_set, _option_key, _get_option_button_value());
+}
+
 void OptionValueControl::_on_changed_line_edit(const String& new_text){
   emit_signal(s_value_set, _option_key, new_text);
 }
@@ -97,6 +105,53 @@ void OptionValueControl::_on_changed_text_edit(){
 
   TextEdit* _opt_node = (TextEdit*)_option_control_node;
   emit_signal(s_value_set, _option_key, _opt_node->get_text());
+}
+
+
+void OptionValueControl::_set_option_button_value(const Variant& value){
+  OptionButton* _optnode = (OptionButton*)_option_control_node;
+  
+  Dictionary _data = value;
+
+  Variant _choices_data_var = _data["choices"];
+  Dictionary _choices_data = _choices_data_var;
+  
+  Array _choices_data_key_list = _choices_data.keys();
+  if(_choices_data_key_list.size() > 0)
+    _optnode->clear();
+
+  for(int i = 0; i < _choices_data_key_list.size(); i++){
+    Variant _key = _choices_data_key_list[i];
+    Variant _value = _choices_data[_key];
+    _optnode->add_item(_value, _key);
+  }
+
+  Variant _picked_data_var = _data["picked"];
+  if(_picked_data_var.get_type() != Variant::INT)
+    return;
+
+  int _picked_data = _data["picked"];
+  for(int i = 0; i < _optnode->get_item_count(); i++){
+    if(_optnode->get_item_id(i) == _picked_data){
+      _optnode->select(i);
+      return;
+    }
+  }
+}
+
+Variant OptionValueControl::_get_option_button_value() const{
+  OptionButton* _optnode = (OptionButton*)_option_control_node;
+  
+  Dictionary _result_data;
+
+  Dictionary _choices_data;
+  for(int i = 0; i < _optnode->get_item_count(); i++)
+    _choices_data[_optnode->get_item_id(i)] = _optnode->get_item_text(i);
+
+  _result_data["choices"] = _choices_data;
+  _result_data["picked"] = _optnode->get_selected_id();
+
+  return _result_data;
 }
 
 
@@ -140,6 +195,10 @@ void OptionValueControl::_ready(){
 
     break; case base_class_Button:{
       _option_control_node->connect("toggled", Callable(this, "_on_changed_button"));
+    }
+
+    break; case base_class_OptionButton:{
+      _option_control_node->connect("item_selected", Callable(this, "_on_changed_option_button"));
     }
 
     break; case base_class_LineEdit:{
@@ -203,6 +262,10 @@ void OptionValueControl::set_option_value(const Variant& value){
       _optnode->set_value(value);
     }
 
+    break; case base_class_OptionButton:{
+      _set_option_button_value(value);
+    }
+
     break; case base_class_Button:{
       BaseButton* _optnode = (BaseButton*)_option_control_node;
       _optnode->set_pressed(value);
@@ -229,6 +292,10 @@ Variant OptionValueControl::get_option_value() const{
     break; case base_class_Range:{
       Range* _optnode = (Range*)_option_control_node;
       _result = _optnode->get_value();
+    }
+
+    break; case base_class_OptionButton:{
+      _result = _get_option_button_value();
     }
 
     break; case base_class_Button:{
