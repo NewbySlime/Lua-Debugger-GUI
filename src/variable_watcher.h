@@ -106,6 +106,9 @@ class VariableWatcher: public godot::Control{
     void _item_activated();
 
     void _on_setter_applied();
+    void _on_setter_applied_add_or_copy(godot::TreeItem* current_item, _variable_tree_item_metadata* metadata, lua::I_variant* key, lua::I_variant* value);
+    void _on_setter_applied_add_table(godot::TreeItem* current_item, _variable_tree_item_metadata* metadata, lua::I_variant* key, lua::I_variant* value);
+    void _on_setter_applied_edit(godot::TreeItem* current_item, _variable_tree_item_metadata* metadata, lua::I_variant* key, lua::I_variant* value);
     void _on_tree_button_clicked(godot::TreeItem* item, int column, int id, int mouse_button);
     void _on_context_menu_clicked(int id);
 
