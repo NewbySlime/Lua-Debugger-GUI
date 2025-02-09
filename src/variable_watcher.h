@@ -51,6 +51,11 @@ class VariableWatcher: public godot::Control{
         bool already_revealed = false;
     };
 
+    struct _revealed_node{
+      public:
+        std::map<lua::comparison_variant, _revealed_node*> branches;
+    };
+
 
     std::set<lua::comparison_variant> _filter_key = {
       lua::string_var("(*temporary)")
@@ -87,6 +92,8 @@ class VariableWatcher: public godot::Control{
     godot::TreeItem* _last_selected_item = NULL;
 
     uint64_t _last_context_id = 0;
+
+    _revealed_node _revealed_tree;
 
 
     void _on_global_variable_changed(const godot::String& key, const godot::Variant& value);
@@ -126,11 +133,18 @@ class VariableWatcher: public godot::Control{
     void _update_tree_item(godot::TreeItem* parent_item, const lua::I_variant* key_var, lua::I_variant* var);
 
     void _reveal_tree_item(godot::TreeItem* parent_item, lua::I_table_var* var);
+    void _reveal_node_by(godot::TreeItem* item);
+
+    bool _is_node_revealed(godot::TreeItem* item);
 
     godot::TreeItem* _create_tree_item(godot::TreeItem* parent_item);
     _variable_tree_item_metadata* _create_vartree_metadata(godot::TreeItem* parent_item);
 
     void _remove_item(godot::TreeItem* item);
+
+    void _clear_revealed_tree();
+    void _clear_revealed_node(_revealed_node* node);
+    void _delete_revealed_node(_revealed_node* node);
 
     void _clear_variable_tree();
     void _clear_vsetter_list();

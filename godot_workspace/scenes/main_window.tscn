@@ -1,4 +1,4 @@
-[gd_scene load_steps=32 format=3 uid="uid://cgjecodaf2s77"]
+[gd_scene load_steps=37 format=3 uid="uid://cgjecodaf2s77"]
 
 [ext_resource type="PackedScene" uid="uid://bbpgcr0g21epu" path="res://scenes/clone/code_context.tscn" id="1_b2mtp"]
 [ext_resource type="SystemFont" uid="uid://c8jm14y54ky2t" path="res://resource/styles/text/code_font.tres" id="1_n2lrs"]
@@ -16,6 +16,7 @@
 [ext_resource type="Texture2D" uid="uid://df7qxoobafca8" path="res://resource/images/logo/SettingsLogo.png" id="14_dify4"]
 [ext_resource type="Texture2D" uid="uid://bvrouncobb0s0" path="res://resource/images/logo/ThreeHorizontalDot-32px-32px.png" id="14_elorr"]
 [ext_resource type="Texture2D" uid="uid://d060ofcipcuyv" path="res://resource/images/logo/SettingsBackLogo.png" id="15_o08uj"]
+[ext_resource type="Texture2D" uid="uid://cmht7r1hiw5v0" path="res://icon.svg" id="17_sxuvq"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1wdwd"]
 bg_color = Color(0.113379, 0.195545, 0.293532, 1)
@@ -151,6 +152,49 @@ bg_color = Color(0.0562916, 0.0562916, 0.0562916, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_npbu6"]
 bg_color = Color(0.113725, 0.113725, 0.113725, 1)
+
+[sub_resource type="Animation" id="Animation_w7a1u"]
+resource_name = "PanOutAnimation"
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("SlideAnimationControl:slide_value")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(-0.0333333, 1),
+"transitions": PackedFloat32Array(-2, -2),
+"update": 0,
+"values": [1.0, 0.0]
+}
+
+[sub_resource type="Animation" id="Animation_kqy4l"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("SlideAnimationControl:slide_value")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [1.0]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_2h7ak"]
+_data = {
+"PanOutAnimation": SubResource("Animation_w7a1u"),
+"RESET": SubResource("Animation_kqy4l")
+}
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_eswy0"]
+bg_color = Color(0.176419, 0.176419, 0.176419, 1)
+border_width_left = 3
+border_color = Color(0.351563, 0.351563, 0.351563, 1)
+corner_radius_top_left = 8
+corner_radius_bottom_left = 8
 
 [node name="Control" type="Control"]
 layout_mode = 3
@@ -642,3 +686,62 @@ text = "Ignore Internal Data"
 [node name="CheckButton" type="CheckButton" parent="SettingsArea/SettingPanel/BackgroundPanel/OptionListMenu/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer/OptionValueControl/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 10
+
+[node name="SplashPanel" type="SplashPanel" parent="."]
+reset_control_node_path = NodePath("Panel")
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 0
+grow_vertical = 0
+
+[node name="SlideAnimationControl" type="SlideAnimationControl" parent="SplashPanel"]
+slide_value = 1.0
+target_node = NodePath("../Panel")
+slide_direction = 3
+slide_pivot = 3
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="SplashPanel"]
+libraries = {
+"": SubResource("AnimationLibrary_2h7ak")
+}
+
+[node name="Panel" type="Panel" parent="SplashPanel"]
+custom_minimum_size = Vector2(240, 64)
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = -240.0
+offset_top = -64.0
+grow_vertical = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_eswy0")
+
+[node name="MarginContainer" type="MarginContainer" parent="SplashPanel/Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 8
+
+[node name="HBoxContainer" type="HBoxContainer" parent="SplashPanel/Panel/MarginContainer"]
+layout_mode = 2
+alignment = 2
+
+[node name="Label" type="Label" parent="SplashPanel/Panel/MarginContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 6
+text = "Made With Godot"
+
+[node name="TextureRect" type="TextureRect" parent="SplashPanel/Panel/MarginContainer/HBoxContainer"]
+layout_mode = 2
+texture = ExtResource("17_sxuvq")
+expand_mode = 2

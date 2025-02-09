@@ -51,7 +51,7 @@ CodeContext::CodeContext(){
 }
 
 CodeContext::~CodeContext(){
-
+  
 }
 
 
@@ -63,12 +63,19 @@ void CodeContext::_breakpoint_toggled_cb(int line){
     long _check_line = _check_valid_line(line);
     if(_check_line < 0){
       _skip_breakpoint_toggled_event = true;
-      _code_edit->set_line_as_breakpoint(_check_line, false);
+      _code_edit->set_line_as_breakpoint(line, false);
       _skip_breakpoint_toggled_event = false;
       return;
     }
 
-    _breakpointed_list.insert(_breakpointed_list.end(), line);
+    if(_check_line != line){
+      _skip_breakpoint_toggled_event = true;
+      _code_edit->set_line_as_breakpoint(line, false);
+      _code_edit->set_line_as_breakpoint(_check_line, true);
+      _skip_breakpoint_toggled_event = false;
+    }
+
+    _breakpointed_list.insert(_breakpointed_list.end(), _check_line);
     std::sort(_breakpointed_list.begin(), _breakpointed_list.end());
 
     emit_signal(s_breakpoint_added, Variant(line), Variant(get_instance_id()));

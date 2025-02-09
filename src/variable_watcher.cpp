@@ -58,6 +58,7 @@ VariableWatcher::VariableWatcher(){
 }
 
 VariableWatcher::~VariableWatcher(){
+  _clear_revealed_tree();
   _clear_variable_tree();
 }
 
@@ -121,6 +122,7 @@ void VariableWatcher::_lua_on_resuming(){
 }
 
 void VariableWatcher::_lua_on_stopping(){
+  _clear_revealed_tree();
   _clear_variable_tree();
 }
 
@@ -194,7 +196,7 @@ void VariableWatcher::_on_setter_applied(){
 
   // get key
   string_var _key_str;
-  _key_var = &_key_str;
+  _key_var = &_key_str; 
   switch(_last_context_id){
     break; case context_menu_edit:
       _key_var = _metadata->this_key;
@@ -658,6 +660,8 @@ void VariableWatcher::_update_variable_tree(){
   _lmetadata->parent_item = _local_item;
   _lmetadata->_mflag |= metadata_local_item;
   _lmetadata->var_setter = _local_setter;
+  string_var _lkey_var = "_L";
+  _lmetadata->this_key = cpplua_create_var_copy(&_lkey_var);
 
   _update_tree_item(_local_item, _variable_watcher, true);
 
@@ -681,6 +685,8 @@ void VariableWatcher::_update_variable_tree(){
   _variable_tree_item_metadata* _gmetadata = _vartree_map[_global_item->get_instance_id()];
   _gmetadata->parent_item = _global_item;
   _gmetadata->var_setter = _global_setter;
+  string_var _gkey_var = "_G";
+  _gmetadata->this_key = cpplua_create_var_copy(&_gkey_var);
 
   _update_tree_item(_global_item, _variable_watcher, false);
 } // enclosure closing
@@ -723,16 +729,8 @@ void VariableWatcher::_update_tree_item(TreeItem* parent_item, const I_variant* 
   const char* _prefix_string = "";
   const char* _suffix_string = "";
 
+  // prefix and suffix changes
   switch(var->get_type()){
-    break; case I_table_var::get_static_lua_type():{
-      auto _vt_iter = _vartree_map.find(parent_item->get_instance_id());
-      if(_vt_iter == _vartree_map.end() || _vt_iter->second->already_revealed)
-        break;
-
-      _variable_tree->create_item(parent_item);
-      parent_item->set_collapsed(true);
-    }
-
     break; case lua::string_var::get_static_lua_type():{
       _prefix_string = "\"";
       _suffix_string = "\"";
@@ -757,6 +755,22 @@ void VariableWatcher::_update_tree_item(TreeItem* parent_item, const I_variant* 
     _iter->second->this_key = cpplua_create_var_copy(key_var);
     _iter->second->this_value = cpplua_create_var_copy(var);
   }
+
+  switch(var->get_type()){
+    // another switch case due to this case needed a initialized metadata
+    break; case I_table_var::get_static_lua_type():{
+      auto _vt_iter = _vartree_map.find(parent_item->get_instance_id());
+      if(_vt_iter == _vartree_map.end() || _vt_iter->second->already_revealed)
+        break;
+
+      if(_is_node_revealed(parent_item))
+        _reveal_tree_item(parent_item, dynamic_cast<I_table_var*>(var));
+      else{
+        _variable_tree->create_item(parent_item);
+        parent_item->set_collapsed(true);
+      }
+    }
+  }
 }
 
 
@@ -775,6 +789,7 @@ void VariableWatcher::_reveal_tree_item(TreeItem* parent_item, I_table_var* var)
     return;
 
   _vt_iter->second->already_revealed = true;
+  _reveal_node_by(parent_item);
 
   _parsed_table_list.insert(var->get_table_pointer());
 
@@ -801,6 +816,68 @@ void VariableWatcher::_reveal_tree_item(TreeItem* parent_item, I_table_var* var)
   }
 
   parent_item->set_collapsed(false);
+}
+
+void VariableWatcher::_reveal_node_by(TreeItem* item){
+  std::vector<comparison_variant> _step_list;
+  TreeItem* _current_item = item;
+  while(true){
+    if(!_current_item)
+      break;
+
+    auto _iter = _vartree_map.find(_current_item->get_instance_id());
+    if(_iter == _vartree_map.end() || !_iter->second->this_key)
+      break;
+
+    _step_list.insert(_step_list.begin(), _iter->second->this_key);
+    _current_item = _current_item->get_parent();
+  }
+
+  _revealed_node* _current_node = &_revealed_tree;
+  for(comparison_variant& cvar: _step_list){
+    auto _check_iter = _current_node->branches.find(cvar);
+    if(_check_iter == _current_node->branches.end()){
+      _revealed_node* _new_node = new _revealed_node();
+      _current_node->branches[cvar] = _new_node;
+
+      _current_node = _new_node;
+      continue;
+    }
+
+    _current_node = _check_iter->second;
+  }
+}
+
+
+bool VariableWatcher::_is_node_revealed(TreeItem* item){
+  std::vector<comparison_variant> _step_list;
+  TreeItem* _current_item = item;
+  while(true){
+    if(!_current_item)
+      break;
+
+    // TODO add this_key check to NULL
+    auto _iter = _vartree_map.find(_current_item->get_instance_id());
+    if(_iter == _vartree_map.end())
+      break;
+
+    _step_list.insert(_step_list.begin(), _iter->second->this_key);
+    _current_item = _current_item->get_parent();
+  }
+
+  bool _result = true;
+  _revealed_node* _current_node = &_revealed_tree;
+  for(comparison_variant& cvar: _step_list){
+    auto _check_iter = _current_node->branches.find(cvar);
+    if(_check_iter == _current_node->branches.end()){
+      _result = false;
+      break;
+    }
+
+    _current_node = _check_iter->second;
+  }
+
+  return _result;
 }
 
 
@@ -833,6 +910,23 @@ void VariableWatcher::_remove_item(TreeItem* item){
   _iter->second->var_setter->set_value(&_nvar, _iter->second->this_key);
   _delete_tree_item_child(item);
   _delete_tree_item(item);
+}
+
+
+void VariableWatcher::_clear_revealed_tree(){
+  _clear_revealed_node(&_revealed_tree);
+}
+
+void VariableWatcher::_clear_revealed_node(_revealed_node* node){
+  for(auto _pair: node->branches)
+    _delete_revealed_node(_pair.second);
+
+  node->branches.clear();
+}
+
+void VariableWatcher::_delete_revealed_node(_revealed_node* node){
+  _clear_revealed_node(node);
+  delete node;
 }
 
 

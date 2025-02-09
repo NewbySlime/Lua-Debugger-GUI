@@ -16,9 +16,22 @@ class SlideAnimationControl: public godot::Node{
       slide_direction_left
     };
 
+    enum slide_pivot{
+      slide_pivot_top,
+      slide_pivot_top_left,
+      slide_pivot_left,
+      slide_pivot_bottom_left,
+      slide_pivot_bottom,
+      slide_pivot_bottom_right,
+      slide_pivot_right,
+      slide_pivot_top_right
+    };
+
   private:
     godot::NodePath _target_node;
     int _direction = slide_direction_up;
+
+    int _pivot = slide_pivot_top_left;
 
     float _slide_value = 0;
 
@@ -42,6 +55,9 @@ class SlideAnimationControl: public godot::Node{
 
     void set_slide_direction(int dir);
     int get_slide_direction() const;
+
+    void set_slide_pivot(int pivot);
+    int get_slide_pivot() const;
 };
 
 #endif

@@ -3,10 +3,13 @@
 #include "logger.h"
 #include "popup_context_menu.h"
 #include "popup_variable_setter.h"
+#include "strutil.h"
 
 #include "godot_cpp/classes/engine.hpp"
+#include "godot_cpp/classes/packed_scene.hpp"
 #include "godot_cpp/classes/popup_menu.hpp"
 #include "godot_cpp/classes/scene_tree.hpp"
+#include "godot_cpp/classes/timer.hpp"
 
 using namespace ErrorTrigger;
 using namespace gdutils;
@@ -17,8 +20,9 @@ const char* GlobalVariables::singleton_path = "/root/GlobalUserVariables";
 
 const char* GlobalVariables::s_global_value_set = "value_set";
 
-const char* GlobalVariables::key_popup_variable_setter_path = "global_popup_variable_setter_path";
 const char* GlobalVariables::key_context_menu_path = "global_context_menu_path";
+const char* GlobalVariables::key_popup_variable_setter_path = "global_popup_variable_setter_path";
+const char* GlobalVariables::key_timer_scene = "timer_scene";
 
 
 void GlobalVariables::_bind_methods(){
@@ -41,6 +45,7 @@ void GlobalVariables::_check_variable_data(bool as_warning){
   if(!_test){
     log_func("[GlobalVariables] Global PopupVariableSetter is not valid object or not yet assigned.");
     _failed = true;
+    goto skip_checking;
   }
 } // enclsoure closing
 
@@ -50,8 +55,29 @@ void GlobalVariables::_check_variable_data(bool as_warning){
   if(!_test){
     log_func("[GlobalVariables] Global PopupContextMenu is not a valid object or not yet assigned.");
     _failed = true;
+    goto skip_checking;
   }  
 } // enclosure closing
+
+{ // enclosure for scoping
+  Ref<PackedScene> _test_pck_scene = get_global_value(key_timer_scene);
+  if(_test_pck_scene.is_null()){
+    log_func(gd_format_str("[GlobalVariables] '{0}' key is not a valid PackedScene.", key_timer_scene));
+    _failed = true;
+    goto skip_checking;
+  }
+
+  godot::Node* _test_node = _test_pck_scene->instantiate();
+  if(!_test_node->is_class(Timer::get_class_static())){
+    log_func("[GlobalVariables] Timer Scene is not a Timer object.");
+    _failed = true;
+    goto skip_checking;
+  }
+
+  _test_node->queue_free();
+} // enclosure closing
+
+  skip_checking:{}
 
   if(_failed && !as_warning){
     trigger_generic_error_message();

@@ -23,6 +23,7 @@
 #include "popup_context_menu.h"
 #include "popup_variable_setter.h"
 #include "slide_animation_control.h"
+#include "splash_panel.h"
 #include "split_ratio_maintainer.h"
 #include "variable_watcher.h"
 
@@ -54,6 +55,7 @@ void initialize_gdextension_module(ModuleInitializationLevel p_level) {
   ClassDB::register_class<PopupContextMenu>();
   ClassDB::register_class<PopupVariableSetter>();
   ClassDB::register_class<SlideAnimationControl>();
+  ClassDB::register_class<SplashPanel>();
   ClassDB::register_class<SplitRatioMaintainer>();
   ClassDB::register_class<VariableWatcher>();
 }

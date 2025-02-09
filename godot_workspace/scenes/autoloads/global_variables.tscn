@@ -1,5 +1,6 @@
-[gd_scene load_steps=3 format=3 uid="uid://b4vpnvvq08h0j"]
+[gd_scene load_steps=4 format=3 uid="uid://b4vpnvvq08h0j"]
 
+[ext_resource type="PackedScene" uid="uid://cilv4ggoe32ow" path="res://scenes/timer_scene.tscn" id="1_63vw4"]
 [ext_resource type="PackedScene" uid="uid://cp50gbm7pm6et" path="res://scenes/popup_variable_setter.tscn" id="1_arkwe"]
 [ext_resource type="PackedScene" uid="uid://ebwywer78pes" path="res://scenes/context_menu.tscn" id="2_gxdmg"]
 
@@ -12,7 +13,8 @@ global_data = {
 "ignore_internal_data": "Bool"
 },
 "global_context_menu_path": NodePath("ContextMenu"),
-"global_popup_variable_setter_path": NodePath("PopupMenu")
+"global_popup_variable_setter_path": NodePath("PopupMenu"),
+"timer_scene": ExtResource("1_63vw4")
 }
 
 [node name="PopupMenu" parent="." instance=ExtResource("1_arkwe")]
