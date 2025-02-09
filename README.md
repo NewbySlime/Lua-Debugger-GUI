@@ -15,6 +15,9 @@ This is a part of a project: [Lua-Debug-API](https://github.com/NewbySlime/Lua-D
 - Variables can be viewed in the variable inspector window.
 - Integrated console window for Lua IO.
 
+## Limitations
+- This only works on Windows as of now (Windows 10 19045). Considering on creating Linux version of the project.
+
 ## How To Use
 Open the program, then
 Open the target Lua source code
@@ -48,6 +51,7 @@ Open Godot with this project, and build it in the **Project/Export** menu.
 - Pausing or Stopping while running thread blocked due to IO Library will cause the whole program to hang.
 
 ## Planned Features
+These planned features are uncertain as of now, end goal of the project might change over time. Reason for uncertainty is due to this project being a personal learning project. As of now, I wanted to push the limits of what I can do with Lua code.
 Note: the list is ordered by priority, top is highest priority, bottom is lowest priority.
 - Reference List (holding Table and Function values as reference)
 - Editing values using VariableWatcher (not yet for Table and Functions)
@@ -62,3 +66,6 @@ Note: the list is ordered by priority, top is highest priority, bottom is lowest
 Any contributions are appreciated, make sure to state the problems in the app or wanted features. You might also want to expect on some short delay in merging since I'm still in University.
 
 As simple as reporting an issue also helps the project to grow!
+
+## Found Issues or any Ideas?
+If you find any issues or any ideas, you can directly report it in the Issues tab or discuss it in the Discussion, I'll respond to it as soon as I can. I will not accept any kind of message privately, unless in important context.
