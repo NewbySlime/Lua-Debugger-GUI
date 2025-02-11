@@ -54,6 +54,7 @@ Open Godot with this project, and build it in the **Project/Export** menu.
 These planned features are uncertain as of now, end goal of the project might change over time. Reason for uncertainty is due to this project being a personal learning project. As of now, I wanted to push the limits of what I can do with Lua code.
 Note: the list is ordered by priority, top is highest priority, bottom is lowest priority.
 - Reference List (holding Table and Function values as reference)
+- Linux Support
 - Editing values using VariableWatcher (not yet for Table and Functions)
 - File editing
 - Stack view (containing currently running functions)
