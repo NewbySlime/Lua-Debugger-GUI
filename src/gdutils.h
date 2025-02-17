@@ -11,6 +11,9 @@
 namespace gdutils{
   godot::String as_hex(const godot::Color& col, bool include_alpha = false);
 
+  godot::Color construct_color(uint32_t hex);
+  godot::Color construct_color(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 0);
+
   godot::Variant parse_str_to_var(godot::Variant::Type expected_var, const godot::String& str, godot::String* fail_reason = NULL);
 
   // The reason of class instead of static function approach to mitigate DLL restriction where the dynamic memory cannot be used while the DLL is initiating.

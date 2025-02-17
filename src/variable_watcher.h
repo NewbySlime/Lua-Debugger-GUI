@@ -2,12 +2,14 @@
 #define VARIABLE_WATCHER_HEADER
 
 #include "global_variables.h"
+#include "group_invoker.h"
 #include "liblua_handle.h"
 #include "luaprogram_handle.h"
 #include "luavariable_setter.h"
 #include "option_control.h"
 #include "popup_context_menu.h"
 #include "popup_variable_setter.h"
+#include "variable_storage.h"
 
 #include "godot_cpp/classes/control.hpp"
 #include "godot_cpp/classes/popup_menu.hpp"
@@ -30,7 +32,9 @@ class VariableWatcher: public godot::Control{
       context_menu_add,
       context_menu_add_table,
       context_menu_copy,
-      context_menu_remove
+      context_menu_remove,
+      context_menu_add_to_storage_copy,
+      context_menu_add_to_storage_reference
     };
 
     enum _metadata_flag{
@@ -78,11 +82,15 @@ class VariableWatcher: public godot::Control{
     lua::util::IVariableSetter* _local_setter = NULL;
 
     GlobalVariables* _gvariables;
+    GroupInvoker* _ginvoker = NULL;
 
     std::vector<lua::util::IVariableSetter*> _setter_list;
     std::map<uint64_t, _variable_tree_item_metadata*> _vartree_map;
     PopupVariableSetter* _popup_variable_setter;
     PopupContextMenu* _global_context_menu;
+
+    godot::NodePath _vstorage_node_path;
+    VariableStorage* _vstorage;
 
     bool _ignore_internal_variables = false;
 
@@ -109,7 +117,10 @@ class VariableWatcher: public godot::Control{
  
     void _item_collapsed_safe(godot::TreeItem* item);
     void _item_collapsed(godot::TreeItem* item);
-    void _item_selected(const godot::Vector2 mouse_pos, int mouse_idx);
+    void _item_selected();
+    void _item_nothing_selected();
+    void _item_selected_mouse(const godot::Vector2 mouse_pos, int mouse_idx);
+    void _item_empty_clicked(const godot::Vector2 mouse_pos, int mouse_idx);
     void _item_activated();
 
     void _on_setter_applied();
@@ -119,8 +130,8 @@ class VariableWatcher: public godot::Control{
     void _on_tree_button_clicked(godot::TreeItem* item, int column, int id, int mouse_button);
     void _on_context_menu_clicked(int id);
 
-    void _variable_setter_do_popup(uint64_t flag = 0);
-    void _variable_setter_do_popup_id(uint64_t id, uint64_t flag = 0);
+    void _variable_setter_do_popup(uint64_t flag = PopupVariableSetter::edit_add_value_edit);
+    void _variable_setter_do_popup_id(uint64_t id, uint64_t flag = PopupVariableSetter::edit_add_value_edit);
 
     // might return NULL if cannot find any setter
     lua::util::IVariableSetter* _find_setter(godot::TreeItem* parent_item);
@@ -134,8 +145,12 @@ class VariableWatcher: public godot::Control{
 
     void _reveal_tree_item(godot::TreeItem* parent_item, lua::I_table_var* var);
     void _reveal_node_by(godot::TreeItem* item);
+    
+    void _sort_item_child(godot::TreeItem* parent_item);
 
-    bool _is_node_revealed(godot::TreeItem* item);
+    bool _is_node_revealed(godot::TreeItem* parent_item);
+
+    void _update_placeholder_state();
 
     godot::TreeItem* _create_tree_item(godot::TreeItem* parent_item);
     _variable_tree_item_metadata* _create_vartree_metadata(godot::TreeItem* parent_item);
@@ -171,7 +186,10 @@ class VariableWatcher: public godot::Control{
     bool get_ignore_internal_variables() const;
 
     godot::NodePath get_variable_tree_path() const;
-    void set_variable_tree_path(godot::NodePath path);
+    void set_variable_tree_path(const godot::NodePath& path);
+
+    godot::NodePath get_variable_storage_path() const;
+    void set_variable_storage_path(const godot::NodePath& path);
 
     godot::Ref<godot::Texture> get_context_menu_button_texture() const;
     void set_context_menu_button_texture(godot::Ref<godot::Texture> texture);

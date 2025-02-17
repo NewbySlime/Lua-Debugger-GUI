@@ -22,6 +22,7 @@ using namespace lua::global;
 
 
 const char* ConsoleWindow::s_input_entered = "input_entered";
+Color ConsoleWindow::placeholder_text_color = gdutils::construct_color(0x7F7F7FFF);
 
 
 void ConsoleWindow::_bind_methods(){
@@ -45,10 +46,13 @@ void ConsoleWindow::_bind_methods(){
   ClassDB::bind_method(D_METHOD("set_warn_color", "color"), &ConsoleWindow::set_warn_color);
   ClassDB::bind_method(D_METHOD("get_err_color"), &ConsoleWindow::get_err_color);
   ClassDB::bind_method(D_METHOD("set_err_color", "color"), &ConsoleWindow::set_err_color);
+  ClassDB::bind_method(D_METHOD("get_placeholder_text"), &ConsoleWindow::get_placeholder_text);
+  ClassDB::bind_method(D_METHOD("set_placeholder_text", "text"), &ConsoleWindow::set_placeholder_text);
 
   ADD_PROPERTY(PropertyInfo(Variant::COLOR, "log_color"), "set_log_color", "get_log_color");
   ADD_PROPERTY(PropertyInfo(Variant::COLOR, "warn_color"), "set_warn_color", "get_warn_color");
   ADD_PROPERTY(PropertyInfo(Variant::COLOR, "err_color"), "set_err_color", "get_err_color");
+  ADD_PROPERTY(PropertyInfo(Variant::STRING, "placeholder_text"), "set_placeholder_text", "get_placeholder_text");
 
   ADD_SIGNAL(MethodInfo(s_input_entered, PropertyInfo(Variant::STRING, "input_data")));
 }
@@ -157,6 +161,9 @@ void ConsoleWindow::_write_to_output_text(){
     _output_str += _str.c_str();
   }
 
+  if(_output_str.is_empty())
+    _output_str = _wrap_color(_placeholder_text, placeholder_text_color);
+
   _output_text->set_text(_output_str);
 }
 
@@ -205,6 +212,9 @@ void ConsoleWindow::_ready(){
 
   _output_text->set_text("");
   _input_text->set_text("");
+
+  // update output (maybe set to placeholder)
+  _write_to_output_text();
 
   return;
 
@@ -271,4 +281,13 @@ Color ConsoleWindow::get_err_color() const{
 
 void ConsoleWindow::set_err_color(Color col){
   _err_color = col;
+}
+
+
+String ConsoleWindow::get_placeholder_text() const{
+  return _placeholder_text;
+}
+
+void ConsoleWindow::set_placeholder_text(const String& str){
+  _placeholder_text = str;
 }

@@ -29,6 +29,8 @@ class PopupVariableSetter: public godot::PopupPanel{
     static const char* key_variable_key_data;
     // This assumes that the parent of the node will be hidden if not used.
     static const char* key_local_key_data;
+    static const char* key_value_data;
+
     static const char* key_string_data;
     static const char* key_number_data;
     static const char* key_boolean_data;
@@ -45,10 +47,11 @@ class PopupVariableSetter: public godot::PopupPanel{
     };
 
     enum EditFlag{
-      edit_flag_none = 0,
-      edit_add_key_edit = 0b001,
-      edit_local_key = 0b010,       // if not set, UI will be setup for global key
-      edit_clear_on_popup = 0b100
+      edit_flag_none        = 0b0000,
+      edit_add_key_edit     = 0b0001,
+      edit_local_key        = 0b0010, // if not set, UI will be setup for global key
+      edit_clear_on_popup   = 0b0100,
+      edit_add_value_edit   = 0b1000
     };
 
     struct VariableData{

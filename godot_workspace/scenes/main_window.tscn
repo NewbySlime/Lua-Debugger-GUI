@@ -1,4 +1,4 @@
-[gd_scene load_steps=37 format=3 uid="uid://cgjecodaf2s77"]
+[gd_scene load_steps=36 format=3 uid="uid://cgjecodaf2s77"]
 
 [ext_resource type="PackedScene" uid="uid://bbpgcr0g21epu" path="res://scenes/clone/code_context.tscn" id="1_b2mtp"]
 [ext_resource type="SystemFont" uid="uid://c8jm14y54ky2t" path="res://resource/styles/text/code_font.tres" id="1_n2lrs"]
@@ -37,9 +37,6 @@ border_width_bottom = 3
 border_color = Color(0, 0, 0, 1)
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
-
-[sub_resource type="LabelSettings" id="LabelSettings_iypxv"]
-font_size = 14
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_j6ujq"]
 
@@ -261,6 +258,7 @@ text = "Open File To Start"
 [node name="TabContainer" type="CodeWindow" parent="VSplitContainer/HSplitContainer/CodeWindow/Grouping"]
 code_context_scene = "res://scenes/clone/code_context.tscn"
 context_menu_path = NodePath("../../BackgroundContainer/MenuControl")
+physics_interpolation_mode = 0
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -271,6 +269,7 @@ size_flags_horizontal = 3
 current_tab = 0
 
 [node name="CodeContext" parent="VSplitContainer/HSplitContainer/CodeWindow/Grouping/TabContainer" instance=ExtResource("1_b2mtp")]
+physics_interpolation_mode = 0
 layout_mode = 2
 metadata/_tab_index = 0
 
@@ -280,6 +279,7 @@ theme_override_constants/margin_top = 35
 
 [node name="MenuControl" type="CodeContextMenu" parent="VSplitContainer/HSplitContainer/CodeWindow/BackgroundContainer"]
 button_container_path = NodePath("../AreaMargin/ContextMenu")
+physics_interpolation_mode = 0
 layout_mode = 2
 
 [node name="Panel" type="Panel" parent="VSplitContainer/HSplitContainer/CodeWindow/BackgroundContainer"]
@@ -339,12 +339,12 @@ grow_vertical = 2
 
 [node name="CodeFlowControlContainer" type="CodeFlowControl" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow"]
 control_button_container_path = NodePath("HBoxContainer")
+physics_interpolation_mode = 0
 custom_minimum_size = Vector2(0, 50)
 layout_mode = 2
 
 [node name="Panel" type="Panel" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/CodeFlowControlContainer"]
-layout_mode = 1
-anchors_preset = 5
+layout_mode = 0
 anchor_left = 0.5
 anchor_right = 0.5
 offset_left = -150.0
@@ -354,8 +354,7 @@ grow_horizontal = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_ha21p")
 
 [node name="HBoxContainer" type="HBoxContainer" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/CodeFlowControlContainer"]
-layout_mode = 1
-anchors_preset = 5
+layout_mode = 0
 anchor_left = 0.5
 anchor_right = 0.5
 offset_left = -150.0
@@ -417,33 +416,31 @@ icon = ExtResource("12_ifwq8")
 
 [node name="MarginContainer" type="MarginContainer" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow"]
 layout_mode = 2
-theme_override_constants/margin_left = 20
+size_flags_vertical = 3
 theme_override_constants/margin_top = 8
-theme_override_constants/margin_right = 20
-theme_override_constants/margin_bottom = 8
 
-[node name="ExecutionContext" type="Label" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/MarginContainer"]
-layout_mode = 2
-theme_override_fonts/font = ExtResource("1_n2lrs")
-theme_override_font_sizes/font_size = 14
-text = "Variable Inspector"
-label_settings = SubResource("LabelSettings_iypxv")
-vertical_alignment = 1
-
-[node name="ScrollContainer" type="ScrollContainer" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow"]
+[node name="TabContainer" type="TabContainer" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/MarginContainer"]
 layout_mode = 2
 size_flags_vertical = 3
+current_tab = 0
 
-[node name="VariableInspector" type="VariableWatcher" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/ScrollContainer"]
-variable_tree_path = NodePath("VariableInspector")
+[node name="Variable Inspector" type="VariableWatcher" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/MarginContainer/TabContainer"]
+variable_tree_path = NodePath("VariableTree")
+variable_storage_path = NodePath("../Variable Storage")
 context_menu_button_texture = ExtResource("14_elorr")
+physics_interpolation_mode = 0
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+metadata/_tab_index = 0
 
-[node name="VariableInspector" type="Tree" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/ScrollContainer/VariableInspector"]
-layout_mode = 1
-anchors_preset = 15
+[node name="GroupInvoker" type="GroupInvoker" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/MarginContainer/TabContainer/Variable Inspector"]
+group_node_data = {
+"placeholder_node": [NodePath("../Label")]
+}
+
+[node name="VariableTree" type="Tree" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/MarginContainer/TabContainer/Variable Inspector"]
+layout_mode = 0
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
@@ -452,23 +449,66 @@ size_flags_vertical = 3
 theme_override_fonts/font = ExtResource("1_n2lrs")
 allow_rmb_select = true
 
-[node name="ExecutionContextContainer" type="ExecutionContext" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow"]
-execution_info_path = NodePath("MarginContainer/ExecutionContext")
-modulate = Color(0.633757, 0.633757, 0.633757, 1)
-custom_minimum_size = Vector2(0, 30)
-layout_mode = 2
-
-[node name="Panel" type="Panel" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/ExecutionContextContainer"]
+[node name="Label" type="Label" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/MarginContainer/TabContainer/Variable Inspector"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_colors/font_color = Color(0.497474, 0.497474, 0.497474, 1)
+text = "Run Lua To Use Inspector"
+horizontal_alignment = 1
+vertical_alignment = 1
 
-[node name="MarginContainer" type="MarginContainer" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/ExecutionContextContainer"]
+[node name="Variable Storage" type="VariableStorage" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/MarginContainer/TabContainer"]
+variable_tree_path = NodePath("VariableTree")
+visible = false
+layout_mode = 2
+metadata/_tab_index = 1
+
+[node name="GroupInvoker" type="GroupInvoker" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/MarginContainer/TabContainer/Variable Storage"]
+group_node_data = {
+"placeholder_node": [NodePath("../Label")]
+}
+
+[node name="VariableTree" type="Tree" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/MarginContainer/TabContainer/Variable Storage"]
 layout_mode = 1
 anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+allow_rmb_select = true
+
+[node name="Label" type="Label" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/MarginContainer/TabContainer/Variable Storage"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.497474, 0.497474, 0.497474, 1)
+text = "Store Variable Here"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ExecutionContextContainer" type="ExecutionContext" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow"]
+execution_info_path = NodePath("MarginContainer/ExecutionContext")
+physics_interpolation_mode = 0
+modulate = Color(0.633757, 0.633757, 0.633757, 1)
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+
+[node name="Panel" type="Panel" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/ExecutionContextContainer"]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/ExecutionContextContainer"]
+layout_mode = 0
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
@@ -489,20 +529,20 @@ input_text_path = NodePath("VBoxContainer/InputMargin/HBoxContainer/InputText")
 log_color = Color(0.753984, 0.753984, 0.753984, 1)
 warn_color = Color(0.902972, 0.655383, 3.85046e-07, 1)
 err_color = Color(0.925218, 0, 0.0756133, 1)
+placeholder_text = "Console Log Here"
+physics_interpolation_mode = 0
 custom_minimum_size = Vector2(0, 200)
 layout_mode = 2
 
 [node name="Panel" type="Panel" parent="VSplitContainer/ConsoleWindow"]
-layout_mode = 1
-anchors_preset = 15
+layout_mode = 0
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
 [node name="VBoxContainer" type="VBoxContainer" parent="VSplitContainer/ConsoleWindow"]
-layout_mode = 1
-anchors_preset = 15
+layout_mode = 0
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
@@ -554,6 +594,7 @@ mouse_filter = 2
 
 [node name="UnfocusArea" type="FocusArea" parent="SettingsArea"]
 ignore_focus = true
+physics_interpolation_mode = 0
 anchor_right = 1.0
 anchor_bottom = 1.0
 scale = Vector2(1e-05, 1e-05)
@@ -626,6 +667,7 @@ icon_alignment = 1
 expand_icon = true
 
 [node name="OptionListMenu" type="OptionListMenu" parent="SettingsArea/SettingPanel/BackgroundPanel"]
+physics_interpolation_mode = 0
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -634,7 +676,7 @@ grow_horizontal = 2
 grow_vertical = 2
 
 [node name="MarginContainer" type="MarginContainer" parent="SettingsArea/SettingPanel/BackgroundPanel/OptionListMenu"]
-layout_mode = 2
+layout_mode = 0
 offset_right = 500.0
 offset_bottom = 648.0
 size_flags_horizontal = 3
@@ -670,6 +712,7 @@ size_flags_vertical = 0
 
 [node name="OptionValueControl" type="OptionValueControl" parent="SettingsArea/SettingPanel/BackgroundPanel/OptionListMenu/MarginContainer/VBoxContainer/ScrollContainer/VBoxContainer"]
 option_key = "ignore_internal_data"
+physics_interpolation_mode = 0
 custom_minimum_size = Vector2(44, 24)
 layout_mode = 2
 size_flags_vertical = 3
@@ -689,6 +732,7 @@ size_flags_horizontal = 10
 
 [node name="SplashPanel" type="SplashPanel" parent="."]
 reset_control_node_path = NodePath("Panel")
+physics_interpolation_mode = 0
 layout_mode = 1
 anchors_preset = 3
 anchor_left = 1.0
@@ -711,8 +755,7 @@ libraries = {
 
 [node name="Panel" type="Panel" parent="SplashPanel"]
 custom_minimum_size = Vector2(240, 64)
-layout_mode = 1
-anchors_preset = 2
+layout_mode = 0
 anchor_top = 1.0
 anchor_bottom = 1.0
 offset_left = -240.0

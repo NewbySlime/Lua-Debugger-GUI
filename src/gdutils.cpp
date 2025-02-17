@@ -26,6 +26,26 @@ String gdutils::as_hex(const Color& col, bool include_alpha){
 }
 
 
+Color gdutils::construct_color(uint32_t hex){
+  return construct_color(
+    (0xFF000000 & hex) >> 24,
+    (0x00FF0000 & hex) >> 16,
+    (0x0000FF00 & hex) >> 8,
+    (0x000000FF & hex)
+  );
+}
+
+Color gdutils::construct_color(uint8_t r, uint8_t g, uint8_t b, uint8_t a){
+  Color _result;
+    _result.r = r;
+    _result.g = g;
+    _result.b = b;
+    _result.a = a;
+
+  return _result;
+}
+
+
 Variant gdutils::parse_str_to_var(Variant::Type expected_var, const String& str, String* fail_reason){
   switch(expected_var){
     break; case Variant::BOOL:{

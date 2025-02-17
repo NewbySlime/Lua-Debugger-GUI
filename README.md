@@ -1,7 +1,7 @@
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/X8X0175H9C)
 
 # Lua Debugger
-A debugger made for Lua with Graphical UI made using Godot 4.3.
+A debugger made for Lua with Graphical UI made using Godot 4.3. Currently only works on Windows.
 
 ![Lua Debugger](README-Asset/gui-debugger.png)
 
@@ -46,20 +46,31 @@ For more info, refer to [this site from Godot docs](https://docs.godotengine.org
 Open Godot with this project, and build it in the **Project/Export** menu.
 ![Export Menu](README-Asset/export-menu.png)
 
+## Optimized Engine Build
+Since this program does not fully utilize Engine's function, we have to give it some optimization in order to remove unused features. Thus we need to recompile Engine binaries. Use [this file](export_build_profile/GUI-App.py) as the compiling configuration. Refer [to this article](https://docs.godotengine.org/en/stable/contributing/development/compiling/introduction_to_the_buildsystem.html#overriding-the-build-options) on how to use it.
+
+Then run Sconstruct to compile the export template on the Engine's source code root folder.
+```
+scons target=template_release platform=your_os_type arch=your_arch_type
+scons target=template_debug platform=your_os_type arch=your_arch_type
+```
+NOTE: "platform" parameter can only be filled with "windows".
+
+After that, set "Custom Template" parameter in exporting configuration window with the compiled template binaries from the previous step.
 
 ## Known Problem
 - Pausing or Stopping while running thread blocked due to IO Library will cause the whole program to hang.
 
 ## Planned Features
-These planned features are uncertain as of now, end goal of the project might change over time. Reason for uncertainty is due to this project being a personal learning project. As of now, I wanted to push the limits of what I can do with Lua code.
+These planned features are uncertain as of now, end goal of the project might change over time. Reason for uncertainty is due to this project being a personal learning project. As for now, I wanted to push the limits of what I can do with Lua code.
 Note: the list is ordered by priority, top is highest priority, bottom is lowest priority.
 - Reference List (holding Table and Function values as reference)
-- Linux Support
 - Editing values using VariableWatcher (not yet for Table and Functions)
-- File editing
+- Linux Support
 - Stack view (containing currently running functions)
 - Seperating debugger and user programs by using IPC (in case of the Lua program does not respond)?
 - Stats monitor
+- File editing (maybe?)
 - ~~Breakpoints~~
 - ~~Partial reveal for VariableWatcher~~
 

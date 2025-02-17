@@ -129,7 +129,7 @@ int LuaProgramHandle::_load_runtime_handler(const std::string& file_path){
   const LibLuaHandle::function_data* _func_data = _lua_lib_data->get_function_data();
   const compilation_context* _cc = _func_data->get_cc();
   
-  _runtime_handler =  _cc->api_runtime->create_runtime_handler(NULL, true);
+  _runtime_handler = _cc->api_runtime->create_runtime_handler(NULL, true);
   _err_code = _runtime_handler->load_file(file_path.c_str());
 
   const core _lc = _runtime_handler->get_lua_core_copy();
@@ -467,6 +467,8 @@ void LuaProgramHandle::start_lua(const std::string& file_path){
     return;
 
   _load_runtime_handler(file_path);
+  if(!_runtime_handler)
+    return;
 
   struct _execution_data{
     LuaProgramHandle* _this;

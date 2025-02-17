@@ -25,6 +25,8 @@ const char* PopupVariableSetter::s_mode_type_changed = "mode_type_changed";
 
 const char* PopupVariableSetter::key_variable_key_data = "variable_key_data";
 const char* PopupVariableSetter::key_local_key_data = "local_key_data";
+const char* PopupVariableSetter::key_value_data = "value_data";
+
 const char* PopupVariableSetter::key_string_data = "string_data";
 const char* PopupVariableSetter::key_number_data = "number_data";
 const char* PopupVariableSetter::key_boolean_data = "boolean_data";
@@ -172,12 +174,16 @@ void PopupVariableSetter::_update_setter_ui(){
     _ginvoker->invoke(key_variable_key_data, "set_visible", false);
   }
 
+  _ginvoker->invoke(key_value_data, "set_visible", (bool)(_edit_flag & edit_add_value_edit));
+  
   if(_edit_flag & edit_clear_on_popup)
     clear_input_data();
 
-  _option_list->set_value_data(key_string_data, _data_init.string_data.c_str());
-  _option_list->set_value_data(key_number_data, _data_init.number_data);
-  _option_list->set_value_data(key_boolean_data, _data_init.bool_data);
+  if(!(_edit_flag & edit_clear_on_popup) && (_edit_flag & edit_add_value_edit)){
+    _option_list->set_value_data(key_string_data, _data_init.string_data.c_str());
+    _option_list->set_value_data(key_number_data, _data_init.number_data);
+    _option_list->set_value_data(key_boolean_data, _data_init.bool_data);
+  }
 }
 
 

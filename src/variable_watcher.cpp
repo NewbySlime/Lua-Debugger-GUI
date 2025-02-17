@@ -15,6 +15,8 @@
 #include "Lua-CPPAPI/Src/luaapi_variant_util.h"
 #include "Lua-CPPAPI/Src/luaapi_stack.h"
 
+#include "algorithm"
+
 
 using namespace gdutils;
 using namespace godot;
@@ -22,6 +24,9 @@ using namespace lua;
 using namespace lua::api;
 using namespace lua::debug;
 using namespace lua::util;
+
+
+static const char* placeholder_group_name = "placeholder_node";
 
 
 void VariableWatcher::_bind_methods(){
@@ -35,7 +40,10 @@ void VariableWatcher::_bind_methods(){
 
   ClassDB::bind_method(D_METHOD("_item_collapsed_safe", "item"), &VariableWatcher::_item_collapsed_safe);
   ClassDB::bind_method(D_METHOD("_item_collapsed", "item"), &VariableWatcher::_item_collapsed);
-  ClassDB::bind_method(D_METHOD("_item_selected", "mouse_pos", "mouse_button_index"), &VariableWatcher::_item_selected);
+  ClassDB::bind_method(D_METHOD("_item_selected"), &VariableWatcher::_item_selected);
+  ClassDB::bind_method(D_METHOD("_item_nothing_selected"), &VariableWatcher::_item_nothing_selected);
+  ClassDB::bind_method(D_METHOD("_item_selected_mouse", "mouse_pos", "mouse_button_index"), &VariableWatcher::_item_selected_mouse);
+  ClassDB::bind_method(D_METHOD("_item_empty_clicked", "mouse_pos", "mouse_button_index"), &VariableWatcher::_item_empty_clicked);
   ClassDB::bind_method(D_METHOD("_item_activated"), &VariableWatcher::_item_activated);
 
   ClassDB::bind_method(D_METHOD("_on_setter_applied"), &VariableWatcher::_on_setter_applied);
@@ -45,10 +53,14 @@ void VariableWatcher::_bind_methods(){
   ClassDB::bind_method(D_METHOD("get_variable_tree_path"), &VariableWatcher::get_variable_tree_path);
   ClassDB::bind_method(D_METHOD("set_variable_tree_path", "path"), &VariableWatcher::set_variable_tree_path);
 
+  ClassDB::bind_method(D_METHOD("get_variable_storage_path"), &VariableWatcher::get_variable_storage_path);
+  ClassDB::bind_method(D_METHOD("set_variable_storage_path", "path"), &VariableWatcher::set_variable_storage_path);
+
   ClassDB::bind_method(D_METHOD("get_context_menu_button_texture"), &VariableWatcher::get_context_menu_button_texture);
   ClassDB::bind_method(D_METHOD("set_context_menu_button_texture", "texture"), &VariableWatcher::set_context_menu_button_texture);
 
   ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "variable_tree_path"), "set_variable_tree_path", "get_variable_tree_path");
+  ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "variable_storage_path"), "set_variable_storage_path", "get_variable_storage_path");
   ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "context_menu_button_texture", PROPERTY_HINT_RESOURCE_TYPE, "Texture"), "set_context_menu_button_texture", "get_context_menu_button_texture");
 }
 
@@ -145,7 +157,17 @@ void VariableWatcher::_item_collapsed(TreeItem* item){
   _reveal_tree_item(item, dynamic_cast<I_table_var*>(_iter->second->this_value));
 }
 
-void VariableWatcher::_item_selected(const Vector2 mouse_pos, int mouse_idx){
+void VariableWatcher::_item_selected(){
+  _last_selected_item = _variable_tree->get_selected();
+  _last_selected_id = _last_selected_item->get_instance_id();
+}
+
+void VariableWatcher::_item_nothing_selected(){
+  _last_selected_item = NULL;
+  _last_selected_id = 0;
+}
+
+void VariableWatcher::_item_selected_mouse(const Vector2 mouse_pos, int mouse_idx){
   TreeItem* _item = _variable_tree->get_selected();
   _last_selected_item = _item;
   _last_selected_id = _item->get_instance_id();
@@ -159,6 +181,11 @@ void VariableWatcher::_item_selected(const Vector2 mouse_pos, int mouse_idx){
       _open_context_menu();
     }
   }
+}
+
+void VariableWatcher::_item_empty_clicked(const Vector2 mouse_pos, int mouse_idx){
+  _last_selected_item = NULL;
+  _last_selected_id = 0;
 }
 
 void VariableWatcher::_item_activated(){
@@ -441,7 +468,7 @@ void VariableWatcher::_on_context_menu_clicked(int id){
       if(_iter == _vartree_map.end())
         break;
 
-      uint64_t _edit_flag = PopupVariableSetter::edit_add_key_edit;
+      uint64_t _edit_flag = PopupVariableSetter::edit_add_value_edit | PopupVariableSetter::edit_add_key_edit;
       _edit_flag |= id == context_menu_add? PopupVariableSetter::edit_clear_on_popup: PopupVariableSetter::edit_flag_none;
       if(_iter->second->_mflag & metadata_local_item)
         _edit_flag |= PopupVariableSetter::edit_local_key;
@@ -454,13 +481,30 @@ void VariableWatcher::_on_context_menu_clicked(int id){
       if(_iter == _vartree_map.end())
         break;
 
-      uint64_t _edit_flag = PopupVariableSetter::edit_add_key_edit | PopupVariableSetter::edit_clear_on_popup;
+      uint64_t _edit_flag = 
+      PopupVariableSetter::edit_add_value_edit | PopupVariableSetter::edit_add_key_edit | PopupVariableSetter::edit_clear_on_popup;
 
       _variable_setter_do_popup_id(_last_selected_id, _edit_flag);
     }
 
     break; case context_menu_remove:
       _remove_item(_last_selected_item);
+
+    break; case context_menu_add_to_storage_copy:{
+      auto _iter = _vartree_map.find(_last_selected_id);
+      if(_iter == _vartree_map.end())
+        break;
+
+      _vstorage->add_to_storage(_iter->second->this_value, _iter->second->this_key);
+    }
+
+    break; case context_menu_add_to_storage_reference:{
+      auto _iter = _vartree_map.find(_last_selected_id);
+      if(_iter == _vartree_map.end())
+        break;
+
+      _vstorage->add_to_storage(_iter->second->this_value, _iter->second->this_key, VariableStorage::sf_store_as_reference);
+    }
   }
 }
 
@@ -469,11 +513,7 @@ void VariableWatcher::_variable_setter_do_popup(uint64_t flag){
   if(!_lua_program_handle->is_running())
     return;
 
-  TreeItem* _item = _variable_tree->get_selected();
-  if(!_item)
-    return;
-
-  _variable_setter_do_popup_id(_item->get_instance_id(), flag);
+  _variable_setter_do_popup_id(_last_selected_id, flag);
 }
 
 void VariableWatcher::_variable_setter_do_popup_id(uint64_t id, uint64_t flag){
@@ -571,6 +611,16 @@ void VariableWatcher::_open_context_menu(){
   if(_iter == _vartree_map.end())
     return;
 
+  bool _value_can_be_ref = false;
+  if(_iter->second->this_value){
+    switch(_iter->second->this_value->get_type()){
+      break;
+      case I_table_var::get_static_lua_type():
+      case I_function_var::get_static_lua_type():
+        _value_can_be_ref = true;
+    }
+  }
+
   PopupContextMenu::MenuData _data;
   PopupContextMenu::MenuData::Part _tmp_part;
   if(_iter->second->_mflag & metadata_valid_mutable_item){
@@ -612,15 +662,35 @@ void VariableWatcher::_open_context_menu(){
     _data.part_list.insert(_data.part_list.end(), _tmp_part);
   }
 
+  // add menu for adding to storage
+  if(_iter->second->this_value){
+      _tmp_part.item_type = PopupContextMenu::MenuData::type_separator;
+      _tmp_part.label = "";
+      _tmp_part.id = -1;
+    _data.part_list.insert(_data.part_list.end(), _tmp_part);
+
+      _tmp_part.item_type = PopupContextMenu::MenuData::type_normal;
+      _tmp_part.label = "Add To Storage (copy)";
+      _tmp_part.id = context_menu_add_to_storage_copy;
+    _data.part_list.insert(_data.part_list.end(), _tmp_part);
+
+    if(_value_can_be_ref){
+        _tmp_part.item_type = PopupContextMenu::MenuData::type_normal;
+        _tmp_part.label = "Add To Storage (ref)";
+        _tmp_part.id = context_menu_add_to_storage_reference;
+      _data.part_list.insert(_data.part_list.end(), _tmp_part);
+    }
+  }
+
   if(_data.part_list.size() <= 0){
     GameUtils::Logger::print_warn_static(gd_format_str("Item (of ID: {0}) does not have any metadata flag?", _last_selected_id));
     return;
   }
 
+  _global_context_menu->init_menu(_data);
+
   SignalOwnership _sownership(Signal(_global_context_menu, "id_pressed"), Callable(this, "_on_context_menu_clicked"));
   _sownership.replace_ownership();
-
-  _global_context_menu->init_menu(_data);
 
   Vector2 _mouse_pos = get_tree()->get_root()->get_mouse_position();
   _global_context_menu->set_position(_mouse_pos);
@@ -771,6 +841,8 @@ void VariableWatcher::_update_tree_item(TreeItem* parent_item, const I_variant* 
       }
     }
   }
+
+  _sort_item_child(parent_item->get_parent());
 }
 
 
@@ -849,6 +921,26 @@ void VariableWatcher::_reveal_node_by(TreeItem* item){
 }
 
 
+void VariableWatcher::_sort_item_child(TreeItem* parent_item){
+  if(parent_item->get_child_count() <= 1)
+    return;
+
+  std::vector<TreeItem*> _item_list;
+  _item_list.resize(parent_item->get_child_count());
+  for(int i = 0; i < parent_item->get_child_count(); i++)
+    _item_list[i] = parent_item->get_child(i);
+
+
+  std::sort(_item_list.begin(), _item_list.end(), [](TreeItem* lh, TreeItem* rh){
+    return lh->get_text(0) < rh->get_text(0);
+  });
+
+  // length should be more than 1
+  for(int i = _item_list.size()-1; i >= 1; i--)
+    _item_list[i]->move_after(_item_list[0]);
+}
+
+
 bool VariableWatcher::_is_node_revealed(TreeItem* item){
   std::vector<comparison_variant> _step_list;
   TreeItem* _current_item = item;
@@ -881,12 +973,21 @@ bool VariableWatcher::_is_node_revealed(TreeItem* item){
 }
 
 
+void VariableWatcher::_update_placeholder_state(){
+  if(!_ginvoker)
+    return;
+
+  _ginvoker->invoke(placeholder_group_name, "set_visible", _variable_tree->get_root() == NULL);
+}
+
+
 TreeItem* VariableWatcher::_create_tree_item(TreeItem* parent_item){
   TreeItem* _result = _variable_tree->create_item(parent_item);
   _vartree_map[_result->get_instance_id()] = _create_vartree_metadata(parent_item);
 
   _result->add_button(0, _context_menu_button_texture, button_id_context_menu);
 
+  _update_placeholder_state();
   return _result;
 }
 
@@ -935,6 +1036,8 @@ void VariableWatcher::_clear_variable_tree(){
     _global_item = NULL;
     _local_item = NULL;
     _variable_tree->clear();
+    
+    _update_placeholder_state();
   }
 
   _clear_variable_metadata_map();
@@ -1004,9 +1107,10 @@ void VariableWatcher::_delete_tree_item(TreeItem* item){
   }
 
   TreeItem* _parent_item = item->get_parent();
-  if(_parent_item){
+  if(_parent_item)
     _parent_item->remove_child(item);
-  }
+
+  _update_placeholder_state();
 }
 
 
@@ -1048,12 +1152,12 @@ void VariableWatcher::_ready(){
   }
 
   NodePath _popup_var_path = _gvariables->get_global_value(GlobalVariables::key_popup_variable_setter_path);
-  _popup_variable_setter = _gvariables->get_node<PopupVariableSetter>(_popup_var_path);
+  _popup_variable_setter = get_node<PopupVariableSetter>(_popup_var_path);
   if(!_popup_variable_setter)
     return;
 
   NodePath _context_menu_path = _gvariables->get_global_value(GlobalVariables::key_context_menu_path);
-  _global_context_menu = _gvariables->get_node<PopupContextMenu>(_context_menu_path);
+  _global_context_menu = get_node<PopupContextMenu>(_context_menu_path);
   if(!_global_context_menu)
     return;
 
@@ -1065,9 +1169,24 @@ void VariableWatcher::_ready(){
     goto on_error_label;
   }
 
+  _vstorage = get_node<VariableStorage>(_vstorage_node_path);
+  if(!_vstorage){
+    GameUtils::Logger::print_err_static("[VariableWatcher] Cannot get Variable Storage.");
+
+    _quit_code = ERR_UNCONFIGURED;
+    goto on_error_label;
+  }
+
+  _ginvoker = find_any_node<GroupInvoker>(this);
+  if(!_ginvoker)
+    GameUtils::Logger::print_warn_static("[VariableWatcher] Cannot get Group Invoker.");
+
   _variable_tree->connect("button_clicked", Callable(this, "_on_tree_button_clicked"));
   _variable_tree->connect("item_collapsed", Callable(this, "_item_collapsed_safe"));
-  _variable_tree->connect("item_mouse_selected", Callable(this, "_item_selected"));
+  _variable_tree->connect("item_selected", Callable(this, "_item_selected"));
+  _variable_tree->connect("nothing_selected", Callable(this, "_item_nothing_selected"));
+  _variable_tree->connect("item_mouse_selected", Callable(this, "_item_selected_mouse"));
+  _variable_tree->connect("empty_clicked", Callable(this, "_item_empty_clicked"));
   _variable_tree->connect("item_activated", Callable(this, "_item_activated"));
 
   // just in case
@@ -1093,7 +1212,7 @@ void VariableWatcher::_ready(){
     ErrorTrigger::trigger_generic_error_message();
 
     get_tree()->quit(_quit_code);
-  return;}
+  }
 }
 
 void VariableWatcher::_process(double delta){
@@ -1129,8 +1248,17 @@ NodePath VariableWatcher::get_variable_tree_path() const{
   return _variable_tree_path;
 }
 
-void VariableWatcher::set_variable_tree_path(NodePath path){
+void VariableWatcher::set_variable_tree_path(const NodePath& path){
   _variable_tree_path = path;
+}
+
+
+NodePath VariableWatcher::get_variable_storage_path() const{
+  return _vstorage_node_path;
+}
+
+void VariableWatcher::set_variable_storage_path(const NodePath& path){
+  _vstorage_node_path = path;
 }
 
 

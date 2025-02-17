@@ -103,7 +103,23 @@ Variant GlobalVariables::get_global_value(const String& key) const{
   if(!_variable_data.has(key))
     return Variant();
 
-  return _variable_data[key];
+  Variant _res = _variable_data[key];
+  
+  // do some checking
+  switch(_res.get_type()){
+    break; case Variant::NODE_PATH:{
+      NodePath _tmp_node_path = _res;
+      Node* _tmp_node = get_node<Node>(_tmp_node_path);
+      if(!_tmp_node){
+        GameUtils::Logger::print_warn_static("[GlobalVariables] Cannot parse NodePath to an absolute path. Reason: Node not found.");
+        break;
+      }
+
+      _res = _tmp_node->get_path();
+    }
+  }
+
+  return _res;
 }
 
 bool GlobalVariables::has_global_value(const String& key) const{

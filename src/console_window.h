@@ -16,6 +16,8 @@ class ConsoleWindow: public godot::Control{
 
   public:
     static const char* s_input_entered;
+    
+    static godot::Color placeholder_text_color;
 
   private:
     LuaProgramHandle* _program_handle;
@@ -35,6 +37,8 @@ class ConsoleWindow: public godot::Control{
     godot::NodePath _input_text_path;
     godot::LineEdit* _input_text;
 
+    godot::String _placeholder_text;
+
     void _on_log(const godot::String& msg_info, const godot::String& str);
     void _on_log_warn(const godot::String& msg_info, const godot::String& str);
     void _on_log_err(const godot::String& msg_info, const godot::String& str);
@@ -46,7 +50,7 @@ class ConsoleWindow: public godot::Control{
     void _add_string_to_output_buffer(const std::string& str);
     void _write_to_output_text();
 
-protected:
+  protected:
     static void _bind_methods();
 
   public:
@@ -58,7 +62,7 @@ protected:
     void clear_output_buffer();
     void append_output_buffer(const std::string& str);
 
-    godot::NodePath get_output_text_path() const;
+  godot::NodePath get_output_text_path() const;
     void set_output_text_path(godot::NodePath path);
 
     godot::NodePath get_input_text_path() const;
@@ -72,6 +76,9 @@ protected:
 
     godot::Color get_err_color() const;
     void set_err_color(godot::Color col);
+
+    godot::String get_placeholder_text() const;
+    void set_placeholder_text(const godot::String& str);
 };
 
 #endif
