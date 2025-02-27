@@ -1,7 +1,9 @@
+#include "custom_variant.h"
 #include "directory_util.h"
 #include "defines.h"
 #include "error_trigger.h"
-#include "gd_string_store.h"
+#include "gdstring_store.h"
+#include "gdvariant_util.h"
 #include "logger.h"
 #include "signal_ownership.h"
 #include "strutil.h"
@@ -47,6 +49,8 @@ void VariableWatcher::_bind_methods(){
   ClassDB::bind_method(D_METHOD("_item_activated"), &VariableWatcher::_item_activated);
 
   ClassDB::bind_method(D_METHOD("_on_setter_applied"), &VariableWatcher::_on_setter_applied);
+  ClassDB::bind_method(D_METHOD("_on_setter_applied_add_table_confirmed_variant"), &VariableWatcher::_on_setter_applied_add_table_confirmed_variant);
+  ClassDB::bind_method(D_METHOD("_on_setter_applied_add_table_cancelled_variant"), &VariableWatcher::_on_setter_applied_add_table_cancelled_variant);
   ClassDB::bind_method(D_METHOD("_on_tree_button_clicked", "tree", "column", "id", "mouse_btn"), &VariableWatcher::_on_tree_button_clicked);
   ClassDB::bind_method(D_METHOD("_on_context_menu_clicked", "id"), &VariableWatcher::_on_context_menu_clicked);
 
@@ -70,7 +74,8 @@ VariableWatcher::VariableWatcher(){
 }
 
 VariableWatcher::~VariableWatcher(){
-  _clear_revealed_tree();
+  _clear_item_state(&_local_item_state_tree);
+  _clear_item_state(&_global_item_state_tree);
   _clear_variable_tree();
 }
 
@@ -122,22 +127,26 @@ void VariableWatcher::_option_changed_ignore_internal_data(const Variant& value)
 
 
 void VariableWatcher::_lua_on_thread_starting(){
-  _lua_program_handle->get_variable_watcher()->ignore_internal_variables(_ignore_internal_variables);
+
 }
 
 void VariableWatcher::_lua_on_pausing(){
   _update_variable_tree();
+  // local item state will not be cleared as it will retain data about each functions.
+  // _clear_item_state(&_local_item_state_tree);
+  _clear_item_state(&_global_item_state_tree);
 }
 
 void VariableWatcher::_lua_on_resuming(){
+  _update_item_state_tree();
   _clear_variable_tree();
 }
 
 void VariableWatcher::_lua_on_stopping(){
-  _clear_revealed_tree();
+  _clear_item_state(&_local_item_state_tree);
+  _clear_item_state(&_global_item_state_tree);
   _clear_variable_tree();
 }
-
 
 void VariableWatcher::_item_collapsed_safe(TreeItem* item){
   _update_callable_list.insert(_update_callable_list.end(), Callable(this, "_item_collapsed").bind(item));
@@ -154,7 +163,7 @@ void VariableWatcher::_item_collapsed(TreeItem* item){
   if(_iter->second->this_value->get_type() != I_table_var::get_static_lua_type())
     return;
 
-  _reveal_tree_item(item, dynamic_cast<I_table_var*>(_iter->second->this_value));
+  _reveal_tree_item(item, NULL);
 }
 
 void VariableWatcher::_item_selected(){
@@ -220,7 +229,6 @@ void VariableWatcher::_on_setter_applied(){
   I_variant* _value_var = NULL;
 
 { // enclosure for using goto
-
   // get key
   string_var _key_str;
   _key_var = &_key_str; 
@@ -270,13 +278,13 @@ void VariableWatcher::_on_setter_applied(){
     break;
     case context_menu_add:
     case context_menu_copy:
-      _on_setter_applied_add_or_copy(_current_item, _metadata, _key_var, _value_var);
+      _on_setter_applied_add_or_copy(_current_item, _key_var, _value_var);
 
     break; case context_menu_add_table:
-      _on_setter_applied_add_table(_current_item, _metadata, _key_var, _value_var);
+      _on_setter_applied_add_table(_current_item, _key_var, _value_var);
 
     break; case context_menu_edit:
-      _on_setter_applied_edit(_current_item, _metadata, _key_var, _value_var);
+      _on_setter_applied_edit(_current_item, _key_var, _value_var);
   }
 } // enclosure closing
 
@@ -289,160 +297,120 @@ void VariableWatcher::_on_setter_applied(){
     cpplua_delete_variant(_value_var);
 }
 
-void VariableWatcher::_on_setter_applied_add_or_copy(TreeItem* current_item, _variable_tree_item_metadata* metadata, I_variant* key_var, I_variant* value_var){
-  // set the value
-  bool _success = metadata->var_setter->set_value(value_var, key_var);
-  if(!_success){
-    I_variable_watcher* _vwatch = _lua_program_handle->get_variable_watcher();
-    const I_error_var* _err_var = _vwatch->get_last_error();
-    gd_string_store _err_str = "(null)"; 
-    gd_string_store _key_str = "(null)";
-    
-    if(_err_var){
-      _err_str.data = "";
-      _err_var->to_string(&_err_str);
-    }
-
-    if(key_var)
-      key_var->to_string(&_key_str);
-
-    GameUtils::Logger::print_err_static(gd_format_str("Error occurred when adding '{0}' variable. Err: {1}", _key_str.data, _err_str.data));
+void VariableWatcher::_on_setter_applied_add_or_copy(TreeItem* current_item, I_variant* key_var, I_variant* value_var){
+  TreeItem* _parent_item = current_item->get_parent();
+  if(!_parent_item)
     return;
-  }
+
+  _on_setter_applied_add_table(_parent_item, key_var, value_var);
+}
+
+
+struct _setter_applied_add_table_data{
+  uint64_t item_id;
+  I_variant* key_var;
+  I_variant* value_var;
+};
+
+void VariableWatcher::_on_setter_applied_add_table(TreeItem* parent_item, I_variant* key_var, I_variant* value_var){
+  auto _iter = _vartree_map.find(parent_item->get_instance_id());
+  if(_iter == _vartree_map.end() || !_iter->second->this_value->is_type(I_table_var::get_static_lua_type()))
+    return;
+
+  I_table_var* _tvar = dynamic_cast<I_table_var*>(_iter->second->this_value);
+  I_variant* _value_test = _tvar->get_value(key_var);
   
-  uint32_t _edit_flag = _popup_variable_setter->get_edit_flag();
+  // value already exists
+  if(_value_test && _value_test->get_type() != I_nil_var::get_static_lua_type()){
+    _setter_applied_add_table_data _data;
+      _data.item_id = parent_item->get_instance_id();
+      _data.key_var = cpplua_create_var_copy(key_var);
+      _data.value_var = cpplua_create_var_copy(value_var);
 
-  // add new item
-  if(_edit_flag & PopupVariableSetter::edit_local_key){
-    TreeItem* _new_item = _create_tree_item(_local_item);
-    _variable_tree_item_metadata* _metadata = _vartree_map[_new_item->get_instance_id()];
-    _metadata->_mflag = metadata_local_item | metadata_valid_mutable_item;
-    _metadata->var_setter = _local_setter;
-
-    current_item = _new_item;
+    Variant _param = convert_to_variant(&_data);
+    SignalOwnership(Signal(_global_confirmation_dialog, "confirmed"), Callable(this, "_on_setter_applied_add_table_confirmed_variant").bind(_param))
+      .replace_ownership();
+    SignalOwnership(Signal(_global_confirmation_dialog, "canceled"), Callable(this, "_on_setter_applied_add_table_cancelled_variant").bind(_param))
+      .replace_ownership();
+    
+    _global_confirmation_dialog->set_text("Another value with same key already exists. Do you wish to override?");
+    _global_confirmation_dialog->set_title("Confirmation");
+    _global_confirmation_dialog->popup_centered();
   }
+  else
+    _on_setter_applied_add_table_confirmed(_iter->second, key_var, value_var);  
+}
+
+void VariableWatcher::_on_setter_applied_add_table_confirmed_variant(const Variant& data){
+  _setter_applied_add_table_data _data = parse_variant_data<_setter_applied_add_table_data>(data);
+  auto _iter = _vartree_map.find(_data.item_id);
+  if(_iter == _vartree_map.end())
+  return;
+  
+  _on_setter_applied_add_table_confirmed(_iter->second, _data.key_var, _data.value_var);
+  
+  // delete _data values
+  cpplua_delete_variant(_data.key_var);
+  cpplua_delete_variant(_data.value_var);
+}
+
+void VariableWatcher::_on_setter_applied_add_table_cancelled_variant(const Variant& data){
+  // delete values
+  _setter_applied_add_table_data _data = parse_variant_data<_setter_applied_add_table_data>(data);
+  cpplua_delete_variant(_data.key_var);
+  cpplua_delete_variant(_data.value_var);
+}
+
+void VariableWatcher::_on_setter_applied_add_table_confirmed(_variable_tree_item_metadata* metadata, I_variant* key_var, I_variant* value_var){
+  I_table_var* _tvar = dynamic_cast<I_table_var*>(metadata->this_value);
+
+  // reveal the table
+  if(!metadata->already_revealed){
+    // set the value first
+    _tvar->set_value(key_var, value_var);
+    _reveal_tree_item(metadata->this_item, NULL);
+  }
+  // else, add new treeitem
   else{
-    // add vsetter to table
-    TreeItem* _parent_item = metadata->parent_item;
-    TreeItem* _new_item = _create_tree_item(_parent_item);
-    _variable_tree_item_metadata* _metadata = _vartree_map[_new_item->get_instance_id()];
-    _metadata->_mflag = metadata_valid_mutable_item;
-    
-    current_item = _new_item;
+    TreeItem* _child_item = NULL;
 
-    // find VariableSetter from its parent
-    IVariableSetter* _current_vsetter = _find_setter(_new_item->get_parent());
-    if(!_current_vsetter){
-      I_variant* _parent_value = NULL;
+    if(metadata->child_lookup_list){
+{ // enclosure for using gotos
+      auto _child_lookup_iter = metadata->child_lookup_list->find(key_var);
+      if(_child_lookup_iter == metadata->child_lookup_list->end())
+        goto skip_child_fetching;
 
-{ // enclosure for using goto
-      TreeItem* _parent_item = _new_item->get_parent();
-      if(!_parent_item)
-        goto skip_if_block1;
+      auto _child_iter = _vartree_map.find(_child_lookup_iter->second);
+      if(_child_iter == _vartree_map.end())
+        goto skip_child_fetching;
 
-      auto _parent_iter = _vartree_map.find(_parent_item->get_instance_id());
-      if(_parent_iter == _vartree_map.end())
-        goto skip_if_block1;
-
-      if(!_parent_iter->second->this_value || _parent_iter->second->this_value->get_type() != I_table_var::get_static_lua_type())
-        goto skip_if_block1;
-
-      _parent_value = _parent_iter->second->this_value;
+      _child_item = _child_iter->second->this_item;
 } // enclosure closing
 
-      skip_if_block1:{}
-
-      // check if setter should be table or global
-      if(_parent_value)
-        _current_vsetter = new TableVariableSetter(dynamic_cast<I_table_var*>(_parent_value));
-      else
-        _current_vsetter = new GlobalVariableSetter(_lua_program_handle->get_variable_watcher());
-
-      _setter_list.insert(_setter_list.end(), _current_vsetter);
+      skip_child_fetching:{}
     }
 
-    _metadata->var_setter = _current_vsetter;
-  }
-
-  _update_tree_item(current_item, key_var, value_var);
-}
-
-void VariableWatcher::_on_setter_applied_add_table(TreeItem* current_item, _variable_tree_item_metadata* metadata, I_variant* key_var, I_variant* value_var){
-  // find any variable setter of the table
-  IVariableSetter* _vsetter = _find_setter(current_item);
-  if(!_vsetter){
-{ // enclosure for using goto
-    if(!metadata->this_value || metadata->this_value->get_type() != I_table_var::get_static_lua_type())
-      goto skip_if_block1;
-
-    // TODO optimize, it will do a dupe (when revealed)
-    _vsetter = new TableVariableSetter(dynamic_cast<I_table_var*>(metadata->this_value));
-
-    _setter_list.insert(_setter_list.end(), _vsetter);
-} // enclosure closing
-    
-    skip_if_block1:{}
-  }
-
-  // set the value
-  bool _success = _vsetter->set_value(value_var, key_var);
-  if(!_success){
-    I_variable_watcher* _vwatch = _lua_program_handle->get_variable_watcher();
-    const I_error_var* _err_var = _vwatch->get_last_error();
-    gd_string_store _err_str = "(null)"; 
-    gd_string_store _key_str = "(null)";
-    
-    if(_err_var){
-      _err_str.data = "";
-      _err_var->to_string(&_err_str);
+    // create new item if child not found
+    if(!_child_item){
+      _child_item = _create_tree_item(metadata->this_item);
+      _variable_tree_item_metadata* _metadata = _vartree_map[_child_item->get_instance_id()];
+      _metadata->_mflag = metadata_valid_mutable_item;
     }
-
-    if(key_var)
-      key_var->to_string(&_key_str);
-
-    GameUtils::Logger::print_err_static(gd_format_str("Error occurred when adding '{0}' variable to a table. Err: {1}", _key_str.data, _err_str.data));
-    return;
-  }
+    
+    // will handle adding the value to the table
+    _set_tree_item_key(_child_item, key_var);
+    _set_tree_item_value(_child_item, value_var);
   
-  // reveal the table, if already revealed, add the item as table's child
-  bool _add_item = true;
-  auto _parent_tree_iter = _vartree_map.find(current_item->get_instance_id());
-  if(!_parent_tree_iter->second->already_revealed){
-    _add_item = false;
-    _reveal_tree_item(current_item, dynamic_cast<I_table_var*>(_parent_tree_iter->second->this_value));
-  }
-
-  if(_add_item){
-    TreeItem* _new_item = _create_tree_item(current_item);
-    _variable_tree_item_metadata* _metadata = _vartree_map[_new_item->get_instance_id()];
-    _metadata->_mflag = metadata_valid_mutable_item;
-    _metadata->var_setter = _vsetter;
-
-    _update_tree_item(_new_item, key_var, value_var);
+    _update_tree_item(_child_item, NULL);
   }
 }
 
-void VariableWatcher::_on_setter_applied_edit(TreeItem* current_item, _variable_tree_item_metadata* metadata, I_variant* key_var, I_variant* value_var){
-  bool _success = metadata->var_setter->set_value(value_var, key_var);
-  if(!_success){
-    I_variable_watcher* _vwatch = _lua_program_handle->get_variable_watcher();
-    const I_error_var* _err_var = _vwatch->get_last_error();
-    gd_string_store _err_str = "(null)"; 
-    gd_string_store _key_str = "(null)";
-    
-    if(_err_var){
-      _err_str.data = "";
-      _err_var->to_string(&_err_str);
-    }
+void VariableWatcher::_on_setter_applied_edit(TreeItem* current_item, I_variant* key_var, I_variant* value_var){
+  // will handle adding the value to the table
+  _set_tree_item_key(current_item, key_var);
+  _set_tree_item_value(current_item, value_var);
 
-    if(key_var)
-      key_var->to_string(&_key_str);
-
-    GameUtils::Logger::print_err_static(gd_format_str("Error occurred when editing '{0}' variable. Err: {1}", _key_str.data, _err_str.data));
-    return;
-  }
-
-  _update_tree_item(current_item, key_var, value_var);
+  _update_tree_item(current_item, NULL);
 }
 
 
@@ -482,7 +450,10 @@ void VariableWatcher::_on_context_menu_clicked(int id){
         break;
 
       uint64_t _edit_flag = 
-      PopupVariableSetter::edit_add_value_edit | PopupVariableSetter::edit_add_key_edit | PopupVariableSetter::edit_clear_on_popup;
+        PopupVariableSetter::edit_add_value_edit | PopupVariableSetter::edit_add_key_edit | PopupVariableSetter::edit_clear_on_popup;
+
+      if(_iter->second->this_value->get_type() == I_local_table_var::get_static_lua_type())
+        _edit_flag |= PopupVariableSetter::edit_local_key;
 
       _variable_setter_do_popup_id(_last_selected_id, _edit_flag);
     }
@@ -524,7 +495,7 @@ void VariableWatcher::_variable_setter_do_popup_id(uint64_t id, uint64_t flag){
   if(_iter == _vartree_map.end())
     return;
 
-  bool _do_popup = true;
+  bool _do_popup = false;
 
   _popup_variable_setter->set_variable_key("");
   if((flag & PopupVariableSetter::edit_add_key_edit) && _iter->second->this_key){
@@ -535,12 +506,21 @@ void VariableWatcher::_variable_setter_do_popup_id(uint64_t id, uint64_t flag){
   if((flag & PopupVariableSetter::edit_add_key_edit) && (flag & PopupVariableSetter::edit_local_key)){
 { // enclosure for using goto
     PackedStringArray _choices;
+    
+    auto _local_iter = _vartree_map.find(_local_item->get_instance_id());
+    if(_local_iter == _vartree_map.end())
+      goto skip_local_block;
 
-    I_variable_watcher* _vwatcher = _lua_program_handle->get_variable_watcher();
-    _vwatcher->update_local_variables(_vwatcher->get_current_local_stack_idx());
-    for(int i = 0; i < _vwatcher->get_variable_count(); i++){
-      const I_variant* _key_var = _vwatcher->get_variable_key(i);
-      const I_variant* _value_var = _vwatcher->get_variable_value(i);
+    if(!_local_iter->second->this_value->is_type(I_local_table_var::get_static_lua_type()))
+      goto skip_local_block;
+      
+    I_table_var* _tvar = dynamic_cast<I_table_var*>(_local_iter->second->this_value);
+    _tvar->update_keys();
+
+    const I_variant** _key_list = _tvar->get_keys(); 
+    for(int i = 0; _key_list[i]; i++){
+      const I_variant* _key_var = _key_list[i];
+      const I_variant* _value_var = _tvar->get_value(_key_var);
       if(_value_var->get_type() != I_nil_var::get_static_lua_type() ||
         _filter_key.find(_key_var) != _filter_key.end())
         continue;
@@ -550,22 +530,26 @@ void VariableWatcher::_variable_setter_do_popup_id(uint64_t id, uint64_t flag){
         GameUtils::Logger::print_warn_static(gd_format_str("[VariableWatcher] Local variable '{0}' cannot be used for add/copy.", _str.data.c_str()));
         continue;
       }
-
+      
       _choices.append(_str.data.c_str());
+
+      _tvar->free_variant(_value_var);
     }
 
     _do_popup = _choices.size() > 0;
     if(!_do_popup){
       GameUtils::Logger::print_err_static("[VariableWatcher] No empty local variables to add.");
-      goto skip_if_block;
+      goto skip_local_block;
     }
 
     _popup_variable_setter->set_local_key_choice(_choices);
 
 } // enclosure closing
 
-    skip_if_block:{}
+    skip_local_block:{}
   }
+  else
+    _do_popup = true;
 
   if(_do_popup){
     switch(_last_context_id){
@@ -589,36 +573,40 @@ void VariableWatcher::_variable_setter_do_popup_id(uint64_t id, uint64_t flag){
 }
 
 
-IVariableSetter* VariableWatcher::_find_setter(TreeItem* parent_item){
-  if(!parent_item)
-    return NULL;
-
-  for(int i = 0; i < parent_item->get_child_count(); i++){
-    TreeItem* _child_item = parent_item->get_child(i);
-    auto _iter = _vartree_map.find(_child_item->get_instance_id());
-    if(_iter == _vartree_map.end() || !_iter->second->var_setter)
-      continue;
-
-    return _iter->second->var_setter;
-  }
-
-  return NULL;
-}
-
-
 void VariableWatcher::_open_context_menu(){
   auto _iter = _vartree_map.find(_last_selected_id);
   if(_iter == _vartree_map.end())
     return;
 
   bool _value_can_be_ref = false;
+  bool _cannot_be_stored = false;
   if(_iter->second->this_value){
     switch(_iter->second->this_value->get_type()){
       break;
       case I_table_var::get_static_lua_type():
       case I_function_var::get_static_lua_type():
         _value_can_be_ref = true;
+
+      break;
+      case I_local_table_var::get_static_lua_type():
+        _cannot_be_stored = true;
     }
+  }
+
+  bool _has_table_parent = false;
+  TreeItem* _parent_item = _last_selected_item->get_parent();
+  if(_parent_item){
+{ // enclosure for using gotos
+    auto _parent_iter = _vartree_map.find(_parent_item->get_instance_id());
+    if(_parent_iter == _vartree_map.end())
+      goto skip_parent_checking;
+
+    if(!_parent_iter->second->this_value || !_parent_iter->second->this_value->is_type(I_table_var::get_static_lua_type()))
+      goto skip_parent_checking;
+
+    _has_table_parent = true;
+} // enclosure closing
+    skip_parent_checking:{}
   }
 
   PopupContextMenu::MenuData _data;
@@ -634,40 +622,56 @@ void VariableWatcher::_open_context_menu(){
     _data.part_list.insert(_data.part_list.end(), _tmp_part);
   }
 
-  // create separator only when there's any item
-  if(_data.part_list.size() > 0){
-      _tmp_part.item_type = PopupContextMenu::MenuData::type_separator;
-      _tmp_part.label = "";
-      _tmp_part.id = -1;
-    _data.part_list.insert(_data.part_list.end(), _tmp_part);
-  }
-
-  if(_iter->second->this_value && _iter->second->this_value->get_type() == I_table_var::get_static_lua_type()){
-      _tmp_part.item_type = PopupContextMenu::MenuData::type_normal;
-      _tmp_part.label = gd_format_str("Add Table Variable");
-      _tmp_part.id = context_menu_add_table;
-    _data.part_list.insert(_data.part_list.end(), _tmp_part);
-  }
-
-    _tmp_part.item_type = PopupContextMenu::MenuData::type_normal;
-    _tmp_part.label = gd_format_str("Add Variable{0}", (_iter->second->_mflag & metadata_local_item)? " (local)": "");
-    _tmp_part.id = context_menu_add;
-  _data.part_list.insert(_data.part_list.end(), _tmp_part);
-
-  // disable copying value for local variable
-  if(!(_iter->second->_mflag & metadata_local_item) && (_iter->second->_mflag & metadata_valid_mutable_item)){
-      _tmp_part.item_type = PopupContextMenu::MenuData::type_normal;
-      _tmp_part.label = "Copy Variable";
-      _tmp_part.id = context_menu_copy;
-    _data.part_list.insert(_data.part_list.end(), _tmp_part);
-  }
-
-  // add menu for adding to storage
   if(_iter->second->this_value){
-      _tmp_part.item_type = PopupContextMenu::MenuData::type_separator;
-      _tmp_part.label = "";
-      _tmp_part.id = -1;
+    // create separator only when there's any item
+    if(_data.part_list.size() > 0){
+        _tmp_part.item_type = PopupContextMenu::MenuData::type_separator;
+        _tmp_part.label = "";
+        _tmp_part.id = -1;
+      _data.part_list.insert(_data.part_list.end(), _tmp_part);
+    }
+
+    switch(_iter->second->this_value->get_type()){
+      break; case I_table_var::get_static_lua_type():{
+          _tmp_part.item_type = PopupContextMenu::MenuData::type_normal;
+          _tmp_part.label = gd_format_str("Add Table Variable");
+          _tmp_part.id = context_menu_add_table;
+        _data.part_list.insert(_data.part_list.end(), _tmp_part);
+      }
+
+      break; case I_local_table_var::get_static_lua_type():{
+          _tmp_part.item_type = PopupContextMenu::MenuData::type_normal;
+          _tmp_part.label = gd_format_str("Add Local Variable");
+          _tmp_part.id = context_menu_add_table;
+        _data.part_list.insert(_data.part_list.end(), _tmp_part);
+      }
+    }
+  }
+
+  if(_has_table_parent){
+      _tmp_part.item_type = PopupContextMenu::MenuData::type_normal;
+      _tmp_part.label = gd_format_str("Add Variable{0}", (_iter->second->_mflag & metadata_local_item)? " (local)": "");
+      _tmp_part.id = context_menu_add;
     _data.part_list.insert(_data.part_list.end(), _tmp_part);
+
+    // disable copying value for local variable
+    if((_iter->second->_mflag & metadata_local_item) <= 0){
+        _tmp_part.item_type = PopupContextMenu::MenuData::type_normal;
+        _tmp_part.label = "Copy Variable";
+        _tmp_part.id = context_menu_copy;
+      _data.part_list.insert(_data.part_list.end(), _tmp_part);
+    }
+  }
+  
+  // add menu for adding to storage
+  if(!_cannot_be_stored && _iter->second->this_value){
+    // create separator only when there's any item
+    if(_data.part_list.size() > 0){
+        _tmp_part.item_type = PopupContextMenu::MenuData::type_separator;
+        _tmp_part.label = "";
+        _tmp_part.id = -1;
+      _data.part_list.insert(_data.part_list.end(), _tmp_part);
+    }
 
       _tmp_part.item_type = PopupContextMenu::MenuData::type_normal;
       _tmp_part.label = "Add To Storage (copy)";
@@ -689,8 +693,8 @@ void VariableWatcher::_open_context_menu(){
 
   _global_context_menu->init_menu(_data);
 
-  SignalOwnership _sownership(Signal(_global_context_menu, "id_pressed"), Callable(this, "_on_context_menu_clicked"));
-  _sownership.replace_ownership();
+  SignalOwnership(Signal(_global_context_menu, "id_pressed"), Callable(this, "_on_context_menu_clicked"))
+    .replace_ownership();
 
   Vector2 _mouse_pos = get_tree()->get_root()->get_mouse_position();
   _global_context_menu->set_position(_mouse_pos);
@@ -705,13 +709,14 @@ void VariableWatcher::_update_variable_tree(){
   if(!_lua_program_handle->is_running())
     goto skip_to_return;
 
-
 { // enclosure for using gotos
   core _lc = _lua_program_handle->get_runtime_handler()->get_lua_core_copy();
-  
-  _parsed_table_list.clear();
 
-  I_variable_watcher* _variable_watcher = _lua_program_handle->get_variable_watcher();
+  I_thread_handle_reference* _main_thread_ref = _lua_program_handle->get_main_thread();
+  core _main_lc;
+    _main_lc.istate = _main_thread_ref->get_interface()->get_lua_state_interface();
+    _main_lc.context = _lua_lib_data->get_function_data()->get_cc();
+
   I_execution_flow* _execution_flow = _lua_program_handle->get_execution_flow();
   
   std::string _file_name = DirectoryUtil::strip_path(_lua_program_handle->get_current_running_file());
@@ -719,96 +724,62 @@ void VariableWatcher::_update_variable_tree(){
   _file_item->set_text(0, _file_name.c_str());
 
   // update local variables
-  _variable_watcher->update_local_variables();
-  _local_setter = new LocalVariableSetter(_variable_watcher);
-
-  std::string _func_name = _lua_program_handle->get_current_function();
   _local_item = _create_tree_item(_file_item);
-  _local_item->set_text(0, _func_name.c_str());
-
   _variable_tree_item_metadata* _lmetadata = _vartree_map[_local_item->get_instance_id()];
-  _lmetadata->parent_item = _local_item;
-  _lmetadata->_mflag |= metadata_local_item;
-  _lmetadata->var_setter = _local_setter;
-  string_var _lkey_var = "_L";
-  _lmetadata->this_key = cpplua_create_var_copy(&_lkey_var);
+  _lmetadata->already_revealed = true;
+  
+  string_var _func_name = _lua_program_handle->get_current_function();
+  local_table_var _local_data(&_main_lc, 0);
+  _set_tree_item_key(_local_item, &_func_name);
+  _set_tree_item_value(_local_item, &_local_data);
 
-  _update_tree_item(_local_item, _variable_watcher, true);
-
+  auto _state_iter = _local_item_state_tree.branches.find(_func_name);
+  _item_state* _local_function_state = _state_iter != _local_item_state_tree.branches.end()? _state_iter->second: NULL;
+  
+  _update_tree_item(_local_item, _local_function_state);
+  
   // update global variables
+  _global_item = _create_tree_item(_file_item);
+  _variable_tree_item_metadata* _gmetadata = _vartree_map[_global_item->get_instance_id()];
+  _gmetadata->already_revealed = true;
+  _global_item_state_tree.is_revealed = true;
+  
+  string_var _global_name = "Global";
   _lc.context->api_value->pushglobaltable(_lc.istate);
   I_variant* _global_table_var = _lc.context->api_varutil->to_variant(_lc.istate, -1);
-  if(_global_table_var->get_type() == I_table_var::get_static_lua_type()){
-    I_table_var* _global_table_tvar = dynamic_cast<I_table_var*>(_global_table_var);
-    _parsed_table_list.insert(_global_table_tvar->get_table_pointer());
-  }
-
   _lc.context->api_stack->pop(_lc.istate, 1);
-  _lc.context->api_varutil->delete_variant(_global_table_var);
-
-  _variable_watcher->update_global_variables();
-  _global_setter = new GlobalVariableSetter(_variable_watcher);
-
-  _global_item = _create_tree_item(_file_item);
-  _global_item->set_text(0, "Global");
+  _set_tree_item_key(_global_item, &_global_name);
+  _set_tree_item_value(_global_item, _global_table_var);  
   
-  _variable_tree_item_metadata* _gmetadata = _vartree_map[_global_item->get_instance_id()];
-  _gmetadata->parent_item = _global_item;
-  _gmetadata->var_setter = _global_setter;
-  string_var _gkey_var = "_G";
-  _gmetadata->this_key = cpplua_create_var_copy(&_gkey_var);
-
-  _update_tree_item(_global_item, _variable_watcher, false);
+  _update_tree_item(_global_item, &_global_item_state_tree);
+  
+  cpplua_delete_variant(_global_table_var);
 } // enclosure closing
 
   skip_to_return:{}
   _lua_program_handle->unlock_object();
 }
 
+void VariableWatcher::_update_tree_item(TreeItem* item, _item_state* state){
+  auto _iter = _vartree_map.find(item->get_instance_id());
+  if(_iter == _vartree_map.end())
+    return;
 
-void VariableWatcher::_update_tree_item(TreeItem* parent_item, I_variable_watcher* watcher, bool as_local){
-  _delete_tree_item_child(parent_item);
-
-  IVariableSetter* _vsetter;
-  if(as_local)
-    _vsetter = _local_setter;
-  else
-    _vsetter = _global_setter;
-
-  const core _lc = _lua_program_handle->get_runtime_handler()->get_lua_core_copy();
-  for(int i = 0; i < watcher->get_variable_count(); i++){
-    const I_variant* _key_var = watcher->get_variable_key(i);
-    auto _iter = _filter_key.find(_key_var);
-    if(_iter != _filter_key.end())
-      continue;
-
-    TreeItem* _var_title = _create_tree_item(parent_item);
-    _variable_tree_item_metadata* _metadata = _vartree_map[_var_title->get_instance_id()];
-    _metadata->var_setter = _vsetter;
-    _metadata->_mflag |= metadata_valid_mutable_item;
-    _metadata->_mflag |= as_local? metadata_local_item: 0;
-
-    I_variant* _value_var = watcher->get_variable_value_mutable(i);
-    _update_tree_item(_var_title, _key_var, _value_var);
-  }
-}
-
-void VariableWatcher::_update_tree_item(TreeItem* parent_item, const I_variant* key_var, I_variant* var){
-  _delete_tree_item_child(parent_item);
+  _delete_tree_item_child(item);
 
   const char* _prefix_string = "";
   const char* _suffix_string = "";
 
   // prefix and suffix changes
-  switch(var->get_type()){
+  switch(_iter->second->this_value->get_type()){
     break; case lua::string_var::get_static_lua_type():{
       _prefix_string = "\"";
       _suffix_string = "\"";
     }
   }
 
-  string_store _key_str; key_var->to_string(&_key_str);
-  string_store _value_str; var->to_string(&_value_str);
+  string_store _key_str; _iter->second->this_key->to_string(&_key_str);
+  string_store _value_str; _iter->second->this_value->to_string(&_value_str);
   std::string _format_val_str = format_str("%s: %s%s%s",
     _key_str.data.c_str(),
     _prefix_string,
@@ -816,108 +787,210 @@ void VariableWatcher::_update_tree_item(TreeItem* parent_item, const I_variant* 
     _suffix_string
   );
 
-  parent_item->set_text(0, _format_val_str.c_str());
+  item->set_text(0, _format_val_str.c_str());
+  
+  if(_iter->second->this_value->is_type(I_table_var::get_static_lua_type())){
+    bool _reveal_item = false;
+    if(state)
+      _reveal_item = state->is_revealed;
+    else
+      _reveal_item = _iter->second->already_revealed;
 
-  auto _iter = _vartree_map.find(parent_item->get_instance_id());
-  if(_iter != _vartree_map.end()){
-    _clear_variable_metadata(_iter->second);
-
-    _iter->second->this_key = cpplua_create_var_copy(key_var);
-    _iter->second->this_value = cpplua_create_var_copy(var);
-  }
-
-  switch(var->get_type()){
-    // another switch case due to this case needed a initialized metadata
-    break; case I_table_var::get_static_lua_type():{
-      auto _vt_iter = _vartree_map.find(parent_item->get_instance_id());
-      if(_vt_iter == _vartree_map.end() || _vt_iter->second->already_revealed)
-        break;
-
-      if(_is_node_revealed(parent_item))
-        _reveal_tree_item(parent_item, dynamic_cast<I_table_var*>(var));
-      else{
-        _variable_tree->create_item(parent_item);
-        parent_item->set_collapsed(true);
-      }
+    if(_reveal_item)
+      _reveal_tree_item(item, state);
+    else{
+      _variable_tree->create_item(item);
+      item->set_collapsed(true);
     }
   }
 
-  _sort_item_child(parent_item->get_parent());
+  _sort_item_child(item->get_parent());
 }
 
 
-void VariableWatcher::_reveal_tree_item(TreeItem* parent_item, I_table_var* var){
-  _delete_tree_item_child(parent_item);
+void VariableWatcher::_set_tree_item_key(TreeItem* item, const I_variant* key){
+  auto _iter = _vartree_map.find(item->get_instance_id());
+  if(_iter == _vartree_map.end())
+    return;
   
-  IVariableSetter* _vsetter = new TableVariableSetter(var);
-  _setter_list.insert(_setter_list.end(), _vsetter);
+  // put before replacing key value, the previous value is needed
+  TreeItem* _parent_item = item->get_parent();
+  if(_parent_item){
+{ // enclosure for using gotos
+    auto _parent_iter = _vartree_map.find(_parent_item->get_instance_id());
+    if(_parent_iter == _vartree_map.end())
+      goto skip_parent_checking;
+      
+    // guaranteed child_lookup_list if this_value is table value
+    if(!_parent_iter->second->this_value || !_parent_iter->second->this_value->is_type(I_table_var::get_static_lua_type()))
+      goto skip_parent_checking;
 
-  auto _vt_iter = _vartree_map.find(parent_item->get_instance_id());
-  if(_vt_iter == _vartree_map.end())
+    I_table_var* _tvar = dynamic_cast<I_table_var*>(_parent_iter->second->this_value);
+
+    // remove previous key
+    if(_iter->second->this_key){
+      nil_var _nvar;
+      _tvar->set_value(_iter->second->this_key, &_nvar);
+      _parent_iter->second->child_lookup_list->erase(_iter->second->this_key);
+    }
+
+    // add new key
+    if(key){
+      _parent_iter->second->child_lookup_list->operator[](key) = item->get_instance_id();
+
+      // add new key with previous value
+      if(_iter->second->this_value)
+        _tvar->set_value(key, _iter->second->this_value);
+    }
+} // enclosure closing
+
+    skip_parent_checking:{}
+  }
+
+  if(_iter->second->this_key){
+    cpplua_delete_variant(_iter->second->this_key);
+    _iter->second->this_key = NULL;
+  }
+
+  if(key)
+    _iter->second->this_key = cpplua_create_var_copy(key);
+}
+
+void VariableWatcher::_set_tree_item_value(TreeItem* item, const I_variant* value){
+  auto _iter = _vartree_map.find(item->get_instance_id());
+  if(_iter == _vartree_map.end())
     return;
 
-  auto _pt_iter = _parsed_table_list.find(var->get_table_pointer());
-  if(_pt_iter != _parsed_table_list.end())
+  TreeItem* _parent_item = item->get_parent();
+  if(_parent_item){
+{ // enclosure for using gotos
+    auto _parent_iter = _vartree_map.find(_parent_item->get_instance_id());
+    if(_parent_iter == _vartree_map.end())
+      goto skip_parent_checking;
+
+    if(!_parent_iter->second->this_value || !_parent_iter->second->this_value->is_type(I_table_var::get_static_lua_type()))
+      goto skip_parent_checking;
+
+    I_table_var* _tvar = dynamic_cast<I_table_var*>(_parent_iter->second->this_value);
+{ // enclosure for using gotos
+    if(!_iter->second->this_key)
+      goto skip_value_set;
+
+    // set value to the parent table, if value is NULL, set to nil (delete)
+    nil_var _nvar;
+    const I_variant* _set_value = value? value: &_nvar;
+    _tvar->set_value(_iter->second->this_key, _set_value);
+} // enclosure closing
+    skip_value_set:{}
+} // enclosure closing
+    skip_parent_checking:{}
+  }
+
+  if(_iter->second->this_value){
+    cpplua_delete_variant(_iter->second->this_value);
+    _iter->second->this_value = NULL;
+  }
+
+  if(value && value->is_type(I_table_var::get_static_lua_type())){
+    // create child_lookup_list, if exists, clear the list
+    if(_iter->second->child_lookup_list)
+      _iter->second->child_lookup_list->clear();
+    else
+      _iter->second->child_lookup_list = new std::map<comparison_variant, uint64_t>();
+  }
+  else{
+    // delete child_lookup_list
+    if(_iter->second->child_lookup_list){
+      delete _iter->second->child_lookup_list;
+      _iter->second->child_lookup_list = NULL;
+    }
+  }
+  
+  if(value)
+    _iter->second->this_value = cpplua_create_var_copy(value);
+}
+
+
+void VariableWatcher::_reveal_tree_item(TreeItem* item, _item_state* state){
+  auto _iter = _vartree_map.find(item->get_instance_id());
+  if(_iter == _vartree_map.end())
     return;
 
-  _vt_iter->second->already_revealed = true;
-  _reveal_node_by(parent_item);
+  if(!_iter->second->this_value->is_type(I_table_var::get_static_lua_type()))
+    return;
 
-  _parsed_table_list.insert(var->get_table_pointer());
+  bool _is_local_item = _iter->second->this_value->get_type() == I_local_table_var::get_static_lua_type();
+  
+  _delete_tree_item_child(item);
+  _iter->second->already_revealed = true;
 
   const core _lc = _lua_program_handle->get_runtime_handler()->get_lua_core_copy();
-  var->update_keys();
-  const I_variant** _keys_list = var->get_keys();
-  
-  int _idx = 0;
-  while(_keys_list[_idx]){
-    const I_variant* _key_data = _keys_list[_idx];
+  I_variable_watcher* _vw = _lua_program_handle->get_variable_watcher();
+
+  I_table_var* _tvar = dynamic_cast<I_table_var*>(_iter->second->this_value);  
+  _tvar->update_keys();
+  const I_variant** _keys_list = _tvar->get_keys();
+
+  // query the data first, _set_tree_item will mutate the parent table values
+  struct _query_key_value{
+    I_variant* key;
+    I_variant* value;
+  };
+
+  std::vector<_query_key_value> _queried_list;
+  for(int i = 0; _keys_list[i]; i++){
+    const I_variant* _key_data = _keys_list[i];
     auto _iter = _filter_key.find(_key_data);
-    if(_iter == _filter_key.end()){
-      TreeItem* _var_title = _create_tree_item(parent_item);
-      _variable_tree_item_metadata* _metadata = _vartree_map[_var_title->get_instance_id()];
-      _metadata->var_setter = _vsetter;
-      _metadata->_mflag |= metadata_valid_mutable_item;
-
-      I_variant* _value_data = var->get_value(_key_data);
-      _update_tree_item(_var_title, _key_data, _value_data);
-      var->free_variant(_value_data);
-    }
-
-    _idx++;
-  }
-
-  parent_item->set_collapsed(false);
-}
-
-void VariableWatcher::_reveal_node_by(TreeItem* item){
-  std::vector<comparison_variant> _step_list;
-  TreeItem* _current_item = item;
-  while(true){
-    if(!_current_item)
-      break;
-
-    auto _iter = _vartree_map.find(_current_item->get_instance_id());
-    if(_iter == _vartree_map.end() || !_iter->second->this_key)
-      break;
-
-    _step_list.insert(_step_list.begin(), _iter->second->this_key);
-    _current_item = _current_item->get_parent();
-  }
-
-  _revealed_node* _current_node = &_revealed_tree;
-  for(comparison_variant& cvar: _step_list){
-    auto _check_iter = _current_node->branches.find(cvar);
-    if(_check_iter == _current_node->branches.end()){
-      _revealed_node* _new_node = new _revealed_node();
-      _current_node->branches[cvar] = _new_node;
-
-      _current_node = _new_node;
+    if(_iter != _filter_key.end())
       continue;
-    }
+    
+    // check internal variables
+    if(item == _global_item && _ignore_internal_variables && _vw->is_internal_variables(_key_data))
+      continue;
 
-    _current_node = _check_iter->second;
+    I_variant* _value_data = _tvar->get_value(_key_data);
+
+    _query_key_value _query;
+      _query.key = cpplua_create_var_copy(_key_data);
+      _query.value = cpplua_create_var_copy(_value_data);
+
+    _queried_list.insert(_queried_list.end(), _query);
   }
+  
+  for(_query_key_value& _query: _queried_list){
+{ // enclosure for using gotos
+    // skip if nil value (deleted)
+    if(_query.value->get_type() == I_nil_var::get_static_lua_type())
+      goto skip_adding_child;
+
+    TreeItem* _child_item = _create_tree_item(item);
+    _variable_tree_item_metadata* _metadata = _vartree_map[_child_item->get_instance_id()];
+      _metadata->_mflag |= metadata_valid_mutable_item;
+      _metadata->_mflag |= _is_local_item? metadata_local_item: 0;
+    
+    _set_tree_item_key(_child_item, _query.key);
+    _set_tree_item_value(_child_item, _query.value);
+
+    // find the state of the child
+    _item_state* _child_state = NULL;
+    if(state){
+      auto _state_iter = state->branches.find(_query.key);
+      _child_state = _state_iter != state->branches.end()? _state_iter->second: NULL;
+    }
+    
+    _update_tree_item(_child_item, _child_state);
+} // enclosure closing
+
+    skip_adding_child:{}
+    
+    // free data in query data
+    cpplua_delete_variant(_query.key);
+    cpplua_delete_variant(_query.value);
+  }
+
+  _queried_list.clear();
+
+  item->set_collapsed(false);
 }
 
 
@@ -941,38 +1014,6 @@ void VariableWatcher::_sort_item_child(TreeItem* parent_item){
 }
 
 
-bool VariableWatcher::_is_node_revealed(TreeItem* item){
-  std::vector<comparison_variant> _step_list;
-  TreeItem* _current_item = item;
-  while(true){
-    if(!_current_item)
-      break;
-
-    // TODO add this_key check to NULL
-    auto _iter = _vartree_map.find(_current_item->get_instance_id());
-    if(_iter == _vartree_map.end())
-      break;
-
-    _step_list.insert(_step_list.begin(), _iter->second->this_key);
-    _current_item = _current_item->get_parent();
-  }
-
-  bool _result = true;
-  _revealed_node* _current_node = &_revealed_tree;
-  for(comparison_variant& cvar: _step_list){
-    auto _check_iter = _current_node->branches.find(cvar);
-    if(_check_iter == _current_node->branches.end()){
-      _result = false;
-      break;
-    }
-
-    _current_node = _check_iter->second;
-  }
-
-  return _result;
-}
-
-
 void VariableWatcher::_update_placeholder_state(){
   if(!_ginvoker)
     return;
@@ -983,7 +1024,7 @@ void VariableWatcher::_update_placeholder_state(){
 
 TreeItem* VariableWatcher::_create_tree_item(TreeItem* parent_item){
   TreeItem* _result = _variable_tree->create_item(parent_item);
-  _vartree_map[_result->get_instance_id()] = _create_vartree_metadata(parent_item);
+  _vartree_map[_result->get_instance_id()] = _create_vartree_metadata(_result);
 
   _result->add_button(0, _context_menu_button_texture, button_id_context_menu);
 
@@ -991,12 +1032,12 @@ TreeItem* VariableWatcher::_create_tree_item(TreeItem* parent_item){
   return _result;
 }
 
-VariableWatcher::_variable_tree_item_metadata* VariableWatcher::_create_vartree_metadata(TreeItem* parent_item){
+VariableWatcher::_variable_tree_item_metadata* VariableWatcher::_create_vartree_metadata(TreeItem* item){
   _variable_tree_item_metadata* _result = new _variable_tree_item_metadata();
-  _result->parent_item = parent_item;
+  _result->parent_item = item->get_parent();
+  _result->this_item = item;
   _result->this_key = NULL;
   _result->this_value = NULL;
-  _result->var_setter = NULL;
 
   return _result;
 }
@@ -1007,26 +1048,83 @@ void VariableWatcher::_remove_item(TreeItem* item){
   if(_iter == _vartree_map.end())
     return;
 
-  nil_var _nvar;
-  _iter->second->var_setter->set_value(&_nvar, _iter->second->this_key);
+  _variable_tree_item_metadata* _parent_metadata = NULL;
+
+  TreeItem* _parent_item = item->get_parent();
+  if(_parent_item){
+{ // enclosure for using gotos
+    auto _parent_iter = _vartree_map.find(_parent_item->get_instance_id());
+    if(_parent_iter == _vartree_map.end())
+      goto skip_getting_parent_metadata;
+
+    _parent_metadata = _parent_iter->second;
+} // enclosure closing
+
+    skip_getting_parent_metadata:{}
+  }
+
+  if(_parent_metadata && _parent_metadata->this_value->is_type(I_table_var::get_static_lua_type())){
+    I_table_var* _tvar = dynamic_cast<I_table_var*>(_parent_metadata->this_value);
+
+    nil_var _nvar;
+    _tvar->set_value(_iter->second->this_key, &_nvar);
+  }
+
   _delete_tree_item_child(item);
   _delete_tree_item(item);
 }
 
 
-void VariableWatcher::_clear_revealed_tree(){
-  _clear_revealed_node(&_revealed_tree);
+void VariableWatcher::_update_item_state_tree(){
+{ // enclosure for using gotos
+  auto _local_iter = _vartree_map.find(_local_item->get_instance_id());
+  if(_local_iter == _vartree_map.end() || !_local_iter->second->this_key)
+    goto skip_local_function_checking;
+
+  _item_state* _local_function_state;
+  auto _state_iter = _local_item_state_tree.branches.find(_local_iter->second->this_key);
+  if(_state_iter != _local_item_state_tree.branches.end())
+    _local_function_state = _state_iter->second;
+  else{
+    _local_function_state = new _item_state();
+      _local_function_state->is_revealed = true;
+    _local_item_state_tree.branches[_local_iter->second->this_key] = _local_function_state;
+  }
+
+  _clear_item_state(_local_function_state);
+  _update_item_state_tree(_local_item, _local_function_state);
+} // enclosure closing
+  skip_local_function_checking:{}
+  
+  _clear_item_state(&_global_item_state_tree);
+  _update_item_state_tree(_global_item, &_global_item_state_tree);
 }
 
-void VariableWatcher::_clear_revealed_node(_revealed_node* node){
+void VariableWatcher::_update_item_state_tree(TreeItem* parent_item, _item_state* parent_state){
+  for(int i = 0; i < parent_item->get_child_count(); i++){
+    TreeItem* _child_item = parent_item->get_child(i);
+    auto _child_iter = _vartree_map.find(_child_item->get_instance_id());
+    if(_child_iter == _vartree_map.end() || !_child_iter->second->this_key)
+      continue;
+
+    _item_state* _new_state = new _item_state();
+      _new_state->is_revealed = !_child_item->is_collapsed();
+
+    _update_item_state_tree(_child_item, _new_state);
+
+    parent_state->branches[_child_iter->second->this_key] = _new_state;
+  }
+}
+
+void VariableWatcher::_clear_item_state(_item_state* node){
   for(auto _pair: node->branches)
-    _delete_revealed_node(_pair.second);
+    _delete_item_state(_pair.second);
 
   node->branches.clear();
 }
 
-void VariableWatcher::_delete_revealed_node(_revealed_node* node){
-  _clear_revealed_node(node);
+void VariableWatcher::_delete_item_state(_item_state* node){
+  _clear_item_state(node);
   delete node;
 }
 
@@ -1041,24 +1139,6 @@ void VariableWatcher::_clear_variable_tree(){
   }
 
   _clear_variable_metadata_map();
-  _clear_vsetter_list();
-}
-
-void VariableWatcher::_clear_vsetter_list(){
-  if(_global_setter){
-    delete _global_setter;
-    _global_setter = NULL;
-  }
-  
-  if(_local_setter){
-    delete _local_setter;
-    _local_setter = NULL;
-  }
-
-  for(auto _vsetter: _setter_list)
-    delete _vsetter;
-
-  _setter_list.clear();
 }
 
 void VariableWatcher::_clear_variable_metadata_map(){
@@ -1069,14 +1149,12 @@ void VariableWatcher::_clear_variable_metadata_map(){
 }
 
 void VariableWatcher::_clear_variable_metadata(_variable_tree_item_metadata* metadata){
-  if(metadata->this_key){
-    cpplua_delete_variant(metadata->this_key);
-    metadata->this_key = NULL;
-  }
+  _set_tree_item_key(metadata->this_item, NULL);
+  _set_tree_item_value(metadata->this_item, NULL);
 
-  if(metadata->this_value){
-    cpplua_delete_variant(metadata->this_value);
-    metadata->this_value = NULL;
+  if(metadata->child_lookup_list){
+    delete metadata->child_lookup_list;
+    metadata->child_lookup_list;
   }
 }
 
@@ -1161,6 +1239,11 @@ void VariableWatcher::_ready(){
   if(!_global_context_menu)
     return;
 
+  NodePath _confirmation_dialog_path = _gvariables->get_global_value(GlobalVariables::key_confirmation_dialog_path);
+  _global_confirmation_dialog = get_node<ConfirmationDialog>(_confirmation_dialog_path);
+  if(!_global_confirmation_dialog)
+    return;
+
   _variable_tree = get_node<Tree>(_variable_tree_path);
   if(!_variable_tree){
     GameUtils::Logger::print_err_static("[VariableWatcher] Cannot get Tree for Variable Inspector.");
@@ -1231,11 +1314,6 @@ void VariableWatcher::_process(double delta){
 
 void VariableWatcher::set_ignore_internal_variables(bool flag){
   _ignore_internal_variables = flag;
-  if(_lua_program_handle->is_running()){
-    I_variable_watcher* _vw = _lua_program_handle->get_variable_watcher();
-    _vw->ignore_internal_variables(_ignore_internal_variables);
-  }
-
   _update_variable_tree();
 }
 

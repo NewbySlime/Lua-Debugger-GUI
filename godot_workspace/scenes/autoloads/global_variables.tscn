@@ -12,15 +12,17 @@ global_data = {
 "expected_config_vartype": {
 "ignore_internal_data": "Bool"
 },
+"global_confirmation_dialog_path": NodePath("ConfirmationDialog"),
 "global_context_menu_path": NodePath("ContextMenu"),
 "global_popup_variable_setter_path": NodePath("PopupMenu"),
 "timer_scene": ExtResource("1_63vw4")
 }
 
+[node name="ConfirmationDialog" type="ConfirmationDialog" parent="."]
+
 [node name="PopupMenu" parent="." instance=ExtResource("1_arkwe")]
 initial_position = 0
 size = Vector2i(328, 248)
-visible = false
 
 [node name="ContextMenu" parent="." instance=ExtResource("2_gxdmg")]
 unfocusable = false

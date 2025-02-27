@@ -21,6 +21,7 @@ class GlobalVariables: public godot::Node{
 
     static const char* key_context_menu_path;
     static const char* key_popup_variable_setter_path;
+    static const char* key_confirmation_dialog_path;
     static const char* key_timer_scene;
     
 

@@ -5,6 +5,7 @@
 #include "popup_variable_setter.h"
 #include "strutil.h"
 
+#include "godot_cpp/classes/confirmation_dialog.hpp"
 #include "godot_cpp/classes/engine.hpp"
 #include "godot_cpp/classes/packed_scene.hpp"
 #include "godot_cpp/classes/popup_menu.hpp"
@@ -22,6 +23,7 @@ const char* GlobalVariables::s_global_value_set = "value_set";
 
 const char* GlobalVariables::key_context_menu_path = "global_context_menu_path";
 const char* GlobalVariables::key_popup_variable_setter_path = "global_popup_variable_setter_path";
+const char* GlobalVariables::key_confirmation_dialog_path = "global_confirmation_dialog_path";
 const char* GlobalVariables::key_timer_scene = "timer_scene";
 
 
@@ -54,6 +56,16 @@ void GlobalVariables::_check_variable_data(bool as_warning){
   PopupContextMenu* _test = get_node<PopupContextMenu>(_test_path);
   if(!_test){
     log_func("[GlobalVariables] Global PopupContextMenu is not a valid object or not yet assigned.");
+    _failed = true;
+    goto skip_checking;
+  }  
+} // enclosure closing
+
+{ // enclosure for scoping 
+  NodePath _test_path = get_global_value(key_confirmation_dialog_path);
+  ConfirmationDialog* _test = get_node<ConfirmationDialog>(_test_path);
+  if(!_test){
+    log_func("[GlobalVariables] Global ConfirmationDialog is not a valid object or not yet assigned.");
     _failed = true;
     goto skip_checking;
   }  

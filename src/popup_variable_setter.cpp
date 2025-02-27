@@ -40,7 +40,7 @@ std::map<String, key_cb_type>* _key_cb = NULL;
 std::map<String, uint32_t>* _setter_mode_enum_lookup = NULL;
 
 static void _code_deinitiate();
-destructor_helper _dh(_code_deinitiate);
+static destructor_helper _dh(_code_deinitiate);
 
 
 void PopupVariableSetter::_code_initiate(){
@@ -179,11 +179,13 @@ void PopupVariableSetter::_update_setter_ui(){
   if(_edit_flag & edit_clear_on_popup)
     clear_input_data();
 
-  if(!(_edit_flag & edit_clear_on_popup) && (_edit_flag & edit_add_value_edit)){
+  if(_edit_flag & edit_add_value_edit){
     _option_list->set_value_data(key_string_data, _data_init.string_data.c_str());
     _option_list->set_value_data(key_number_data, _data_init.number_data);
     _option_list->set_value_data(key_boolean_data, _data_init.bool_data);
   }
+
+  _data_output = _data_init;
 }
 
 

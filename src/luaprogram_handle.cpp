@@ -1,6 +1,6 @@
 #include "defines.h"
 #include "error_trigger.h"
-#include "gd_string_store.h"
+#include "gdstring_store.h"
 #include "logger.h"
 #include "luaprogram_handle.h"
 #include "node_utils.h"

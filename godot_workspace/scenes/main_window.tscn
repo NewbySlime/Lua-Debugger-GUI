@@ -1,4 +1,4 @@
-[gd_scene load_steps=36 format=3 uid="uid://cgjecodaf2s77"]
+[gd_scene load_steps=38 format=3 uid="uid://cgjecodaf2s77"]
 
 [ext_resource type="PackedScene" uid="uid://bbpgcr0g21epu" path="res://scenes/clone/code_context.tscn" id="1_b2mtp"]
 [ext_resource type="SystemFont" uid="uid://c8jm14y54ky2t" path="res://resource/styles/text/code_font.tres" id="1_n2lrs"]
@@ -15,7 +15,9 @@
 [ext_resource type="Texture2D" uid="uid://b6ymps4xmwpr0" path="res://resource/images/logo/RestartLogo.png" id="12_ifwq8"]
 [ext_resource type="Texture2D" uid="uid://df7qxoobafca8" path="res://resource/images/logo/SettingsLogo.png" id="14_dify4"]
 [ext_resource type="Texture2D" uid="uid://bvrouncobb0s0" path="res://resource/images/logo/ThreeHorizontalDot-32px-32px.png" id="14_elorr"]
+[ext_resource type="FontFile" uid="uid://rrk4cxfo1ek6" path="res://resource/fonts/SourceCodePro/static/SourceCodePro-Light.ttf" id="14_yx8cj"]
 [ext_resource type="Texture2D" uid="uid://d060ofcipcuyv" path="res://resource/images/logo/SettingsBackLogo.png" id="15_o08uj"]
+[ext_resource type="FontFile" uid="uid://cnhf3i2ofscsa" path="res://resource/fonts/SourceCodePro/static/SourceCodePro-Medium.ttf" id="16_kr13r"]
 [ext_resource type="Texture2D" uid="uid://cmht7r1hiw5v0" path="res://icon.svg" id="17_sxuvq"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1wdwd"]
@@ -446,7 +448,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 size_flags_vertical = 3
-theme_override_fonts/font = ExtResource("1_n2lrs")
+theme_override_fonts/font = ExtResource("14_yx8cj")
 allow_rmb_select = true
 
 [node name="Label" type="Label" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/MarginContainer/TabContainer/Variable Inspector"]
@@ -479,6 +481,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_fonts/font = ExtResource("14_yx8cj")
 allow_rmb_select = true
 
 [node name="Label" type="Label" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/MarginContainer/TabContainer/Variable Storage"]
@@ -559,7 +562,7 @@ theme_override_constants/margin_right = 10
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_fonts/normal_font = ExtResource("1_n2lrs")
+theme_override_fonts/normal_font = ExtResource("16_kr13r")
 theme_override_styles/normal = SubResource("StyleBoxEmpty_j6ujq")
 bbcode_enabled = true
 autowrap_mode = 2
@@ -580,7 +583,7 @@ text = ">"
 [node name="InputText" type="LineEdit" parent="VSplitContainer/ConsoleWindow/VBoxContainer/InputMargin/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_fonts/font = ExtResource("1_n2lrs")
+theme_override_fonts/font = ExtResource("14_yx8cj")
 placeholder_text = "Input here"
 
 [node name="SettingsArea" type="Control" parent="."]
@@ -758,8 +761,8 @@ custom_minimum_size = Vector2(240, 64)
 layout_mode = 0
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_left = -240.0
 offset_top = -64.0
+offset_right = 240.0
 grow_vertical = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_eswy0")
 

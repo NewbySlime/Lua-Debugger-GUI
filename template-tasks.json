@@ -1,0 +1,55 @@
+{
+  // See https://go.microsoft.com/fwlink/?LinkId=733558
+  // for the documentation about the tasks.json format
+  "version": "2.0.0",
+  "command": "cmd",
+  "args": [
+    "/c"
+  ],
+  "tasks": [
+    {
+      "label": "mingw-build-dll",
+      "args": [
+        "mingw32-make --file=../lua_api.make --directory=${workspaceFolder}\\src\\Lua-CPPAPI f_use_del f_use_mingw proc_compile"
+      ],
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "mingw-build-dll-debug",
+      "args": [
+        "mingw32-make --file=../lua_api.make --directory=${workspaceFolder}\\src\\Lua-CPPAPI f_use_del f_use_mingw f_as_debug proc_compile"
+      ],
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "msvc-build-dll",
+      "args": [
+        "vsdevcmd.bat && vcvars64.bat && mingw32-make --file=../lua_api.make --directory=${workspaceFolder}\\src\\Lua-CPPAPI f_use_del f_use_msvc proc_compile"
+      ],
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "msvc-build-dll-debug",
+      "args": [
+        "vsdevcmd.bat && vcvars64.bat && mingw32-make --file=../lua_api.make --directory=${workspaceFolder}\\src\\Lua-CPPAPI f_use_del f_use_msvc f_as_debug proc_compile"
+      ],
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    }
+  ]
+}

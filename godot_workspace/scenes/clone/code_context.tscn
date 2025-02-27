@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://bbpgcr0g21epu"]
 
-[ext_resource type="SystemFont" uid="uid://c8jm14y54ky2t" path="res://resource/styles/text/code_font.tres" id="1_e3gl8"]
+[ext_resource type="FontFile" uid="uid://cnhf3i2ofscsa" path="res://resource/fonts/SourceCodePro/static/SourceCodePro-Medium.ttf" id="1_gvqjx"]
 
 [node name="CodeContext" type="CodeContext"]
 code_edit_node_path = NodePath("CodeEdit")
@@ -13,7 +13,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_colors/background_color = Color(0.151276, 0.151276, 0.151276, 1)
-theme_override_fonts/font = ExtResource("1_e3gl8")
+theme_override_fonts/font = ExtResource("1_gvqjx")
 editable = false
 wrap_mode = 1
 gutters_draw_breakpoints_gutter = true

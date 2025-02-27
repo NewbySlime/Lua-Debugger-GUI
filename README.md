@@ -37,6 +37,11 @@ Run the makefile in src/lua_api.make, the instruction are almost the same with L
 mingw32-make --file=src/lua_api.make --directory=src/Lua-CPPAPI f_use_mingw proc_compile
 ```
 
+If you want to use MSVC to compile, you can use `f_use_msvc` flags. An important note, you have to use Visual Studio environments by running `vsdevcmd` and `vcvars64` or `vcvars32`.
+```
+vsdevcmd.bat && vcvars64.bat && mingw32-make --file=src/lua_api.make --directory=src/Lua-CPPAPI f_use_msvc proc_compile
+```
+
 Run Sconstruct file in the root folder to build Godot user library.
 ```
 scons target=template_release

@@ -302,8 +302,8 @@ void VariableStorage::_open_context_menu(){
 
   _context_menu->init_menu(_menu_data);
 
-  SignalOwnership _sownership(Signal(_context_menu, "id_pressed"), Callable(this, "_on_context_menu_clicked"));
-  _sownership.replace_ownership();
+  SignalOwnership(Signal(_context_menu, "id_pressed"), Callable(this, "_on_context_menu_clicked"))
+    .replace_ownership();
 
   Vector2 _mouse_pos = get_tree()->get_root()->get_mouse_position();
   _context_menu->set_position(_mouse_pos);

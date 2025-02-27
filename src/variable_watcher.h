@@ -11,6 +11,7 @@
 #include "popup_variable_setter.h"
 #include "variable_storage.h"
 
+#include "godot_cpp/classes/confirmation_dialog.hpp"
 #include "godot_cpp/classes/control.hpp"
 #include "godot_cpp/classes/popup_menu.hpp"
 #include "godot_cpp/classes/tree.hpp"
@@ -18,7 +19,8 @@
 
 #include "map"
 
-
+// TODO create reference of created table list with TreeItem list
+// TODO create signal where it will trigger when a table changed
 class VariableWatcher: public godot::Control{
   GDCLASS(VariableWatcher, godot::Control)
 
@@ -38,26 +40,31 @@ class VariableWatcher: public godot::Control{
     };
 
     enum _metadata_flag{
-      metadata_local_item = 0b010,
-      metadata_valid_mutable_item = 0b001
+      metadata_valid_mutable_item = 0b001,
+      metadata_local_item = 0b010
     };
 
     struct _variable_tree_item_metadata{
       public:
         godot::TreeItem* parent_item = NULL;
+        godot::TreeItem* this_item = NULL;
 
-        uint64_t _mflag = 0;
-
-        lua::util::IVariableSetter* var_setter = NULL;
         lua::I_variant* this_key = NULL;
         lua::I_variant* this_value = NULL;
-
+        
         bool already_revealed = false;
+
+        // created when this_value is a table value (check _set_tree_item_value function)
+        std::map<lua::comparison_variant, uint64_t>* child_lookup_list = NULL;
+        
+        uint64_t _mflag = 0;
     };
 
-    struct _revealed_node{
+    struct _item_state{
       public:
-        std::map<lua::comparison_variant, _revealed_node*> branches;
+        std::map<lua::comparison_variant, _item_state*> branches;
+
+        bool is_revealed = false;
     };
 
 
@@ -68,8 +75,6 @@ class VariableWatcher: public godot::Control{
     LibLuaHandle* _lua_lib;
     std::shared_ptr<LibLuaStore> _lua_lib_data;
 
-    std::set<const void*> _parsed_table_list;
-
     LuaProgramHandle* _lua_program_handle = NULL;
 
     godot::NodePath _variable_tree_path;
@@ -78,14 +83,12 @@ class VariableWatcher: public godot::Control{
 
     godot::TreeItem* _global_item = NULL;
     godot::TreeItem* _local_item = NULL;
-    lua::util::IVariableSetter* _global_setter = NULL;
-    lua::util::IVariableSetter* _local_setter = NULL;
 
     GlobalVariables* _gvariables;
     GroupInvoker* _ginvoker = NULL;
 
-    std::vector<lua::util::IVariableSetter*> _setter_list;
     std::map<uint64_t, _variable_tree_item_metadata*> _vartree_map;
+    godot::ConfirmationDialog* _global_confirmation_dialog;
     PopupVariableSetter* _popup_variable_setter;
     PopupContextMenu* _global_context_menu;
 
@@ -101,8 +104,9 @@ class VariableWatcher: public godot::Control{
 
     uint64_t _last_context_id = 0;
 
-    _revealed_node _revealed_tree;
-
+    _item_state _global_item_state_tree;
+    // NOTE: first layer of the tree is about each function data.
+    _item_state _local_item_state_tree;
 
     void _on_global_variable_changed(const godot::String& key, const godot::Variant& value);
     void _gvar_changed_option_control_path(const godot::Variant& value);
@@ -124,45 +128,49 @@ class VariableWatcher: public godot::Control{
     void _item_activated();
 
     void _on_setter_applied();
-    void _on_setter_applied_add_or_copy(godot::TreeItem* current_item, _variable_tree_item_metadata* metadata, lua::I_variant* key, lua::I_variant* value);
-    void _on_setter_applied_add_table(godot::TreeItem* current_item, _variable_tree_item_metadata* metadata, lua::I_variant* key, lua::I_variant* value);
-    void _on_setter_applied_edit(godot::TreeItem* current_item, _variable_tree_item_metadata* metadata, lua::I_variant* key, lua::I_variant* value);
+    void _on_setter_applied_add_or_copy(godot::TreeItem* current_item, lua::I_variant* key, lua::I_variant* value);
+    void _on_setter_applied_add_table(godot::TreeItem* current_item, lua::I_variant* key, lua::I_variant* value);
+    void _on_setter_applied_add_table_confirmed_variant(const godot::Variant& data);
+    void _on_setter_applied_add_table_cancelled_variant(const godot::Variant& data);
+    void _on_setter_applied_add_table_confirmed(_variable_tree_item_metadata* _metadata, lua::I_variant* key, lua::I_variant* value);
+    void _on_setter_applied_edit(godot::TreeItem* current_item, lua::I_variant* key, lua::I_variant* value);
     void _on_tree_button_clicked(godot::TreeItem* item, int column, int id, int mouse_button);
     void _on_context_menu_clicked(int id);
 
     void _variable_setter_do_popup(uint64_t flag = PopupVariableSetter::edit_add_value_edit);
     void _variable_setter_do_popup_id(uint64_t id, uint64_t flag = PopupVariableSetter::edit_add_value_edit);
 
-    // might return NULL if cannot find any setter
-    lua::util::IVariableSetter* _find_setter(godot::TreeItem* parent_item);
-
     void _open_context_menu();
-
+    
     void _update_variable_tree();
-    void _update_tree_item(godot::TreeItem* parent_item, lua::debug::I_variable_watcher* watcher, bool as_local);
-    // NOTE: don't use any variant object from the metedata, as it will be deleted when updated.
-    void _update_tree_item(godot::TreeItem* parent_item, const lua::I_variant* key_var, lua::I_variant* var);
+    // item_state can be NULL to skip state checking.
+    void _update_tree_item(godot::TreeItem* item, _item_state* item_state);
 
-    void _reveal_tree_item(godot::TreeItem* parent_item, lua::I_table_var* var);
-    void _reveal_node_by(godot::TreeItem* item);
+    // Key parameter can be NULL to clear the key value.
+    // The function will handle adding/remove key and value from parent's table values. 
+    void _set_tree_item_key(godot::TreeItem* item, const lua::I_variant* key);
+    // Value parameter can be NULL to clear the value.
+    // The function will handle adding/remove key and value from parent's table values. 
+    void _set_tree_item_value(godot::TreeItem* item, const lua::I_variant* value);
+
+    // item_state can be NULL to skip state checking.
+    void _reveal_tree_item(godot::TreeItem* item, _item_state* item_state);
     
     void _sort_item_child(godot::TreeItem* parent_item);
-
-    bool _is_node_revealed(godot::TreeItem* parent_item);
-
+    
     void _update_placeholder_state();
 
     godot::TreeItem* _create_tree_item(godot::TreeItem* parent_item);
-    _variable_tree_item_metadata* _create_vartree_metadata(godot::TreeItem* parent_item);
+    _variable_tree_item_metadata* _create_vartree_metadata(godot::TreeItem* item);
 
     void _remove_item(godot::TreeItem* item);
 
-    void _clear_revealed_tree();
-    void _clear_revealed_node(_revealed_node* node);
-    void _delete_revealed_node(_revealed_node* node);
+    void _update_item_state_tree();
+    void _update_item_state_tree(godot::TreeItem* parent_item, _item_state* parent_state);
+    void _clear_item_state(_item_state* node);
+    void _delete_item_state(_item_state* node);
 
     void _clear_variable_tree();
-    void _clear_vsetter_list();
     void _clear_variable_metadata_map();
     void _clear_variable_metadata(_variable_tree_item_metadata* metadata);
     void _delete_variable_metadata(_variable_tree_item_metadata* metadata);
