@@ -15,6 +15,7 @@
 #include "group_invoker.h"
 #include "liblua_handle.h"
 #include "luaprogram_handle.h"
+#include "luavariable_tree.h"
 #include "logger.h"
 #include "node_data.h"
 #include "option_control.h"
@@ -48,6 +49,7 @@ void initialize_gdextension_module(ModuleInitializationLevel p_level) {
   ClassDB::register_class<GlobalVariables>();
   ClassDB::register_class<GroupInvoker>();
   ClassDB::register_class<LuaProgramHandle>();
+  ClassDB::register_class<LuaVariableTree>();
   ClassDB::register_class<LibLuaHandle>();
   ClassDB::register_class<NodeData>();
   ClassDB::register_class<OptionControl>();

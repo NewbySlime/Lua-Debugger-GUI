@@ -5,6 +5,7 @@
 #include "group_invoker.h"
 #include "liblua_handle.h"
 #include "luaprogram_handle.h"
+#include "luavariable_tree.h"
 #include "popup_context_menu.h"
 #include "popup_variable_setter.h"
 
@@ -18,30 +19,19 @@
 #include "map"
 
 
-class VariableStorage: public godot::Control{
-  GDCLASS(VariableStorage, godot::Control)
+class VariableWatcher;
+
+class VariableStorage: public LuaVariableTree{
+  GDCLASS(VariableStorage, LuaVariableTree)
 
   public:
     enum storage_flag{
-      sf_skip_checks              = 0b001,
-      sf_skip_alias_replacement   = 0b010,
-      sf_store_as_reference       = 0b100
+      sf_store_as_reference = 0b1
     };
-
-    static const char* s_table_data_changed;
-
 
   private:
     enum _context_menu_type{
-      context_menu_change_alias,
-      context_menu_as_copy
-    };
-
-    struct _item_metadata{
-      godot::TreeItem* _this;
-
-      lua::I_variant* value = NULL;
-      bool already_revealed = false;
+      context_menu_as_copy = 0x10001
     };
 
     LuaProgramHandle* _program_handle;
@@ -49,58 +39,33 @@ class VariableStorage: public godot::Control{
     LibLuaHandle* _lua_lib;
     std::shared_ptr<LibLuaStore> _lua_lib_data;
 
-    godot::NodePath _variable_tree_path;
-    godot::Tree* _variable_tree = NULL;
     godot::TreeItem* _root_item = NULL;
     godot::Ref<godot::Texture> _context_menu_button_icon;
 
-    GlobalVariables* _gvariables;
     GroupInvoker* _ginvoker = NULL;
 
     PopupContextMenu* _context_menu = NULL;
     PopupVariableSetter* _variable_setter = NULL;
 
-    std::map<uint64_t, _item_metadata*> _metadata_map;
+    godot::NodePath _vwatcher_path;
+    VariableWatcher* _vwatcher = NULL;
 
-    std::vector<godot::Callable> _safe_callable_list;
-
-    uint32_t _last_context_enum;
-    uint64_t _last_selected_id;
+    bool _flag_check_placeholder_state = false;
 
     void _lua_on_stopping();
 
-    void _on_context_menu_clicked(int id);
     void _on_context_menu_change_alias();
     void _on_context_menu_as_copy();
 
-    void _on_setter_applied();
-
-    void _add_new_tree_item(const lua::I_variant* var, const lua::I_variant* alias, uint32_t flags, godot::TreeItem* parent_item = NULL);
-    void _reveal_tree_item(godot::TreeItem* item);
-    void _update_tree_item(godot::TreeItem* item, const lua::I_variant* alias = NULL, uint32_t flags = 0);
-    void _update_tree_item_child(godot::TreeItem* item);
     void _update_placeholder_state();
 
-    void _open_context_menu();
+    void _add_custom_context(_variable_tree_item_metadata* metadata, PopupContextMenu::MenuData& data) override;
+    void _check_custom_context(int id) override;
 
-    void _item_collapsed_safe(godot::TreeItem* item);
-    void _item_collapsed(godot::TreeItem* item);
-    void _item_selected();
-    void _item_nothing_selected();
-    void _item_selected_mouse(const godot::Vector2 mouse_pos, int mouse_idx);
-    void _item_empty_clicked(const godot::Vector2 mouse_pos, int mouse_idx);
-    void _item_activated();
+    void _on_item_created(godot::TreeItem* item) override;
+    void _on_item_deleting(godot::TreeItem* item) override;
 
-    _item_metadata* _create_metadata(godot::TreeItem* item);
-    godot::TreeItem* _create_item(godot::TreeItem* parent_item = NULL);
-
-    void _delete_metadata(_item_metadata* metadata);
-    void _delete_tree_item(godot::TreeItem* item);
-    void _delete_tree_item_child(godot::TreeItem* item);
-
-    void _clear_metadata(_item_metadata* metadata);
-    void _clear_metadata_map();
-    void _clear_variable_tree();
+    void _update_item_text(godot::TreeItem* item, const lua::I_variant* key, const lua::I_variant* value) override;
 
   protected:
     static void _bind_methods();
@@ -111,13 +76,10 @@ class VariableStorage: public godot::Control{
     void _ready() override;
     void _process(double delta) override;
 
-    void add_to_storage(const lua::I_variant* var, const lua::I_variant* alias = NULL, uint32_t flags = 0);
+    void add_to_storage(const lua::I_variant* var, const lua::I_variant* key = NULL, uint32_t flags = 0);
 
-    void set_variable_tree_path(const godot::NodePath& path);
-    godot::NodePath get_variable_tree_path() const;
-
-    void set_context_menu_button_icon(godot::Ref<godot::Texture> image);
-    godot::Ref<godot::Texture> get_context_menu_button_icon() const;
+    void set_variable_watcher_path(const godot::NodePath& path);
+    godot::NodePath get_variable_watcher_path() const;
 };
 
 #endif

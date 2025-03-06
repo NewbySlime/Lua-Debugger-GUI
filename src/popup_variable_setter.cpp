@@ -111,7 +111,7 @@ void PopupVariableSetter::_on_value_set_number_data(const Variant& data){
 }
 
 void PopupVariableSetter::_on_value_set_bool_data(const Variant& data){
-  _data_init.number_data = data;
+  _data_init.bool_data = data;
 }
 
 void PopupVariableSetter::_on_value_set_type_enum_data(const Variant& data){

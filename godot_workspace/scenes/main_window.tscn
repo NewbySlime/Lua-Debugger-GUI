@@ -427,8 +427,8 @@ size_flags_vertical = 3
 current_tab = 0
 
 [node name="Variable Inspector" type="VariableWatcher" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/MarginContainer/TabContainer"]
-variable_tree_path = NodePath("VariableTree")
 variable_storage_path = NodePath("../Variable Storage")
+variable_tree_path = NodePath("VariableTree")
 context_menu_button_texture = ExtResource("14_elorr")
 physics_interpolation_mode = 0
 layout_mode = 2
@@ -464,7 +464,9 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="Variable Storage" type="VariableStorage" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/MarginContainer/TabContainer"]
+variable_watcher_path = NodePath("../Variable Inspector")
 variable_tree_path = NodePath("VariableTree")
+context_menu_button_texture = ExtResource("14_elorr")
 visible = false
 layout_mode = 2
 metadata/_tab_index = 1
@@ -761,8 +763,8 @@ custom_minimum_size = Vector2(240, 64)
 layout_mode = 0
 anchor_top = 1.0
 anchor_bottom = 1.0
+offset_left = -240.0
 offset_top = -64.0
-offset_right = 240.0
 grow_vertical = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_eswy0")
 
