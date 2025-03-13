@@ -4,6 +4,8 @@
 #include "godot_cpp/classes/node.hpp"
 
 
+void clear_child(godot::Node* parent);
+
 // Finds any node based on the type T_Node.
 // The function uses BFS to search.
 template<typename T_Node> T_Node* get_any_node(godot::Node* parent, bool recursive = false){

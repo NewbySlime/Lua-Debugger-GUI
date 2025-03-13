@@ -23,6 +23,8 @@
 #include "option_value_control.h"
 #include "popup_context_menu.h"
 #include "popup_variable_setter.h"
+#include "property_modifier/chosen_state_modulate.h"
+#include "reference_query_menu.h"
 #include "slide_animation_control.h"
 #include "splash_panel.h"
 #include "split_ratio_maintainer.h"
@@ -38,6 +40,7 @@ void initialize_gdextension_module(ModuleInitializationLevel p_level) {
   }
 
   // set all the class here
+  ClassDB::register_class<ChosenStateModulate>();
   ClassDB::register_class<CodeContext>();
   ClassDB::register_class<CodeContextMenu>();
   ClassDB::register_class<CodeFlowControl>();
@@ -57,6 +60,7 @@ void initialize_gdextension_module(ModuleInitializationLevel p_level) {
   ClassDB::register_class<OptionValueControl>();
   ClassDB::register_class<PopupContextMenu>();
   ClassDB::register_class<PopupVariableSetter>();
+  ClassDB::register_class<ReferenceQueryMenu>();
   ClassDB::register_class<SlideAnimationControl>();
   ClassDB::register_class<SplashPanel>();
   ClassDB::register_class<SplitRatioMaintainer>();

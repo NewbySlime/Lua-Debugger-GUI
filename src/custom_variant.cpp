@@ -204,7 +204,7 @@ bool local_table_var::from_state(const core* lc, int stack_idx){
   return false;
 }
 
-bool local_table_var::from_state_copy(const core* lc, int stack_idx){
+bool local_table_var::from_state_copy(const core* lc, int stack_idx, bool recursive){
   return false;
 }
 
@@ -309,8 +309,26 @@ void local_table_var::clear_table(){
 }
 
 
-void local_table_var::as_copy(){
+size_t local_table_var::get_size() const{
+  size_t i = 0;
+  for(; ; i++){
+    const char* _key_name = _lc.context->api_debug->getlocal(_lc.istate, _debug_data, i+1);
+    if(!_key_name)
+      break;
+    
+    _lc.context->api_stack->pop(_lc.istate, 1);
+  }
 
+  return i;
+}
+
+
+void local_table_var::as_copy(bool recursive){
+
+}
+
+void local_table_var::remove_reference_values(bool recursive){
+  
 }
 
 

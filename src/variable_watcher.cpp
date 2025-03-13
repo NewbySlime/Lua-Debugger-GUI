@@ -292,6 +292,11 @@ void VariableWatcher::_check_custom_context(int id){
 }
 
 
+void VariableWatcher::_get_reference_query_function(ReferenceQueryMenu::ReferenceQueryFunction* func){
+  *func = _vstorage->get_reference_query_function();
+}
+
+
 void VariableWatcher::_bind_object(OptionControl* obj){
   obj->connect(OptionControl::s_value_set, Callable(this, "_on_option_control_changed"));
 }

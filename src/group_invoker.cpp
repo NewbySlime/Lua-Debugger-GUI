@@ -12,6 +12,8 @@ using namespace godot;
 void GroupInvoker::_bind_methods(){
   ClassDB::bind_method(D_METHOD("_on_node_removed", "node"), &GroupInvoker::_on_node_removed);
 
+  ClassDB::bind_method(D_METHOD("invokev", "group_key", "func_name", "params"), &GroupInvoker::invokev);
+
   ClassDB::bind_method(D_METHOD("set_group_node_data", "data"), &GroupInvoker::set_group_node_data);
   ClassDB::bind_method(D_METHOD("get_group_node_data"), &GroupInvoker::get_group_node_data);
 
@@ -102,7 +104,7 @@ void GroupInvoker::_ready(){
 }
 
 
-void GroupInvoker::invoke(const String& group_key, const String& func_name, const Array& parameter){
+void GroupInvoker::invokev(const String& group_key, const String& func_name, const Array& parameter){
   auto _iter = _group_data_map.find(group_key);
   if(_iter == _group_data_map.end()){
     GameUtils::Logger::print_err_static(gd_format_str("[GroupInvoker] Cannot find group named '{0}'.", group_key));

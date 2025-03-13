@@ -74,6 +74,8 @@ class VariableWatcher: public LuaVariableTree{
     void _check_custom_context(int id) override;
     bool _check_ignored_variable(_variable_tree_item_metadata* metadata, const lua::I_variant* key) override;
 
+    void _get_reference_query_function(ReferenceQueryMenu::ReferenceQueryFunction* func) override;
+
     void _bind_object(OptionControl* obj);
 
   protected:

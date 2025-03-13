@@ -31,16 +31,8 @@ void SignalOwnership::replace_ownership(){
   for(int i = 0; i < _cb_list.size(); i++){
     Dictionary _conn = _cb_list[i];
     Callable _cb = _conn["callable"];
-    if(_cb  == _bound_cb){
-      _is_connected = true;
-      continue;
-    }
-
     _bound_signal.disconnect(_cb);
   }
-
-  if(_is_connected)
-    return;
 
   _bound_signal.connect(_bound_cb);
 }

@@ -1,0 +1,73 @@
+[gd_scene load_steps=2 format=3 uid="uid://ic2e36e5t0h5"]
+
+[ext_resource type="PackedScene" uid="uid://dxmhn8iw44txt" path="res://scenes/content_preview.tscn" id="1_pcbh2"]
+
+[node name="ReferenceQueryMenu" type="ReferenceQueryMenu"]
+label_page_info = NodePath("VBoxContainer/HBoxContainer/PageInfo")
+first_button = NodePath("VBoxContainer/HBoxContainer/First")
+before_button = NodePath("VBoxContainer/HBoxContainer/Before")
+next_button = NodePath("VBoxContainer/HBoxContainer/Next")
+last_button = NodePath("VBoxContainer/HBoxContainer/Last")
+content_preview_pivot = NodePath("VBoxContainer/MarginContainer/ScrollContainer/VBoxContainer")
+content_preview_scene = ExtResource("1_pcbh2")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="VBoxContainer" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Panel" type="Panel" parent="VBoxContainer/MarginContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ScrollContainer" type="ScrollContainer" parent="VBoxContainer/MarginContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="VBoxContainer/MarginContainer/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_constants/separation = 6
+alignment = 1
+
+[node name="PageInfo" type="Label" parent="VBoxContainer/HBoxContainer"]
+layout_mode = 2
+
+[node name="First" type="Button" parent="VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(30, 40)
+layout_mode = 2
+text = "<<"
+
+[node name="Before" type="Button" parent="VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(60, 40)
+layout_mode = 2
+text = "<"
+
+[node name="Next" type="Button" parent="VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(60, 40)
+layout_mode = 2
+text = ">"
+
+[node name="Last" type="Button" parent="VBoxContainer/HBoxContainer"]
+custom_minimum_size = Vector2(30, 40)
+layout_mode = 2
+text = ">>"

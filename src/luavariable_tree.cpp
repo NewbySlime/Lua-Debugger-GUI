@@ -45,6 +45,7 @@ void LuaVariableTree::_bind_methods(){
   ClassDB::bind_method(D_METHOD("_item_activated"), &LuaVariableTree::_item_activated);
 
   ClassDB::bind_method(D_METHOD("_on_setter_applied", "pass_data"), &LuaVariableTree::_on_setter_applied);
+  ClassDB::bind_method(D_METHOD("_on_setter_cancelled"), &LuaVariableTree::_on_setter_cancelled);
   ClassDB::bind_method(D_METHOD("_on_setter_applied_add_table_confirmed_variant"), &LuaVariableTree::_on_setter_applied_add_table_confirmed_variant);
   ClassDB::bind_method(D_METHOD("_on_setter_applied_add_table_cancelled_variant"), &LuaVariableTree::_on_setter_applied_add_table_cancelled_variant);
   ClassDB::bind_method(D_METHOD("_on_tree_button_clicked", "tree", "column", "id", "mouse_btn"), &LuaVariableTree::_on_tree_button_clicked);
@@ -140,17 +141,20 @@ void LuaVariableTree::_item_activated(){
 }
 
 
+void LuaVariableTree::_on_setter_cancelled(){
+  _is_using_variable_setter = false;
+  _on_variable_setter_closing();
+}
+
 void LuaVariableTree::_on_setter_applied(const Variant& pass_data){
+  if(!_is_using_variable_setter)
+    return;
+
   _setter_usage_pass_data _usage_data = parse_variant_data<_setter_usage_pass_data>(pass_data);
   
   auto _iter = _vartree_map.find(_usage_data.parent_id);
   if(_iter == _vartree_map.end())
     return;
-
-  _variable_tree_item_metadata* _metadata = _iter->second;
-
-  uint32_t _mode = _popup_variable_setter->get_mode_type();
-  const PopupVariableSetter::VariableData& _output = _popup_variable_setter->get_output_data();
 
   // this should be a copy of the var
   I_variant* _key_var = NULL;
@@ -158,49 +162,10 @@ void LuaVariableTree::_on_setter_applied(const Variant& pass_data){
   I_variant* _value_var = NULL;
 
 { // enclosure for using goto
-  // get key
-  string_var _key_str;
-  _key_var = &_key_str; 
-  switch(_last_context_id){
-    break; case context_menu_edit:
-      _key_var = _metadata->this_key;
+  _get_data_from_variable_setter(_iter->second, &_key_var, &_value_var);
 
-    break; default:{
-      uint32_t _edit_flag = _popup_variable_setter->get_edit_flag();
-      if(_edit_flag & PopupVariableSetter::edit_local_key){
-        String _key_gdstr = _popup_variable_setter->get_local_key_applied();
-        _key_str = GDSTR_TO_STDSTR(_key_gdstr);
-      }
-      else{
-        String _key_gdstr = _popup_variable_setter->get_variable_key();
-        _key_str = GDSTR_TO_STDSTR(_key_gdstr);
-      }
-    }
-  }
-
-  _key_var = cpplua_create_var_copy(_key_var);
-
-  // parse value
-  _value_var = NULL;
-  switch(_mode){
-    break; case PopupVariableSetter::setter_mode_string:{
-      string_var _svar = _output.string_data.c_str();
-      _value_var = cpplua_create_var_copy(&_svar);
-    }
-
-    break; case PopupVariableSetter::setter_mode_number:{
-      number_var _nvar = _output.number_data;
-      _value_var = cpplua_create_var_copy(&_nvar);
-    }
-
-    break; case PopupVariableSetter::setter_mode_bool:{
-      bool_var _bvar = _output.bool_data;
-      _value_var = cpplua_create_var_copy(&_bvar);
-    }
-
-    break; default:
-      goto skip_to_cleaning;
-  }
+  if(!_key_var || !_value_var)
+    goto skip_to_cleaning;
 
   // invoke based on context
   switch(_last_context_id){
@@ -222,6 +187,9 @@ void LuaVariableTree::_on_setter_applied(const Variant& pass_data){
 
   if(_value_var)
     cpplua_delete_variant(_value_var);
+
+  _is_using_variable_setter = false;
+  _on_variable_setter_closing();
 }
 
 
@@ -437,6 +405,8 @@ void LuaVariableTree::_update_tree_item(TreeItem* item, _item_state* state){
   _update_item_text(item, _iter->second->this_key, _iter->second->this_value);
   
   if(_iter->second->this_value->is_type(I_table_var::get_static_lua_type())){
+    I_table_var* _tvar = dynamic_cast<I_table_var*>(_iter->second->this_value);
+
     bool _reveal_item = false;
     if(state)
       _reveal_item = state->is_revealed;
@@ -445,7 +415,7 @@ void LuaVariableTree::_update_tree_item(TreeItem* item, _item_state* state){
 
     if(_reveal_item)
       _reveal_tree_item(item, state);
-    else{
+    else if(_tvar->get_size() > 0){
       _variable_tree->create_item(item);
       item->set_collapsed(true);
     }
@@ -474,7 +444,6 @@ void LuaVariableTree::_reveal_tree_item(TreeItem* item, _item_state* state){
   // query the data first, _set_tree_item will mutate the parent table values
   struct _query_key_value{
     I_variant* key;
-    I_variant* value;
   };
 
   std::vector<_query_key_value> _queried_list;
@@ -491,24 +460,18 @@ void LuaVariableTree::_reveal_tree_item(TreeItem* item, _item_state* state){
 
     _query_key_value _query;
       _query.key = cpplua_create_var_copy(_key_data);
-      _query.value = cpplua_create_var_copy(_value_data);
 
     _queried_list.insert(_queried_list.end(), _query);
   }
   
   for(_query_key_value& _query: _queried_list){
 { // enclosure for using gotos
-    // skip if nil value (deleted)
-    if(_query.value->get_type() == I_nil_var::get_static_lua_type())
-      goto skip_adding_child;
-
     TreeItem* _child_item = _create_tree_item(item);
     _variable_tree_item_metadata* _metadata = _vartree_map[_child_item->get_instance_id()];
       _metadata->_mflag |= metadata_valid_mutable_item;
       _metadata->_mflag |= _is_local_item? metadata_local_item: 0;
     
-    _set_tree_item_key(_child_item, _query.key);
-    _set_tree_item_value(_child_item, _query.value);
+    _set_tree_item_from_parent(_child_item, _query.key);
 
     // find the state of the child
     _item_state* _child_state = NULL;
@@ -524,7 +487,6 @@ void LuaVariableTree::_reveal_tree_item(TreeItem* item, _item_state* state){
     
     // free data in query data
     cpplua_delete_variant(_query.key);
-    cpplua_delete_variant(_query.value);
   }
 
   _queried_list.clear();
@@ -570,9 +532,14 @@ void LuaVariableTree::_store_item_state(TreeItem* parent_item, _item_state* pare
 
 
 void LuaVariableTree::_set_tree_item_key(TreeItem* item, const I_variant* key){
+  _set_tree_item_key_direct(item, key? cpplua_create_var_copy(key): NULL);
+}
+
+void LuaVariableTree::_set_tree_item_key_direct(TreeItem* item, I_variant* key){
+{ // enclosure for using gotos
   auto _iter = _vartree_map.find(item->get_instance_id());
   if(_iter == _vartree_map.end())
-    return;
+    goto on_error_label;
   
   // put before replacing key value, the previous value is needed
   TreeItem* _parent_item = item->get_parent();
@@ -593,6 +560,14 @@ void LuaVariableTree::_set_tree_item_key(TreeItem* item, const I_variant* key){
       nil_var _nvar;
       _tvar->set_value(_iter->second->this_key, &_nvar);
       _parent_iter->second->child_lookup_list->erase(_iter->second->this_key);
+
+      // value should use the value that has been set to a table
+      I_variant* _set_result = _tvar->get_value(_iter->second->this_key);
+      if(_iter->second->this_value)
+        cpplua_delete_variant(_iter->second->this_value);
+
+      if(_set_result)
+        _iter->second->this_value = _set_result; 
     }
 
     // add new key
@@ -614,13 +589,28 @@ void LuaVariableTree::_set_tree_item_key(TreeItem* item, const I_variant* key){
   }
 
   if(key)
-    _iter->second->this_key = cpplua_create_var_copy(key);
+    _iter->second->this_key = key;
+
+} // enclosure closing
+  return;
+  
+  
+  on_error_label:{}
+
+  if(key)
+    cpplua_delete_variant(key);
 }
 
+
 void LuaVariableTree::_set_tree_item_value(TreeItem* item, const I_variant* value){
+  _set_tree_item_value_direct(item, value? cpplua_create_var_copy(value): NULL);
+}
+
+void LuaVariableTree::_set_tree_item_value_direct(TreeItem* item, I_variant* value){
+{ // enclosure for using gotos
   auto _iter = _vartree_map.find(item->get_instance_id());
   if(_iter == _vartree_map.end())
-    return;
+    goto on_error_label;
 
   TreeItem* _parent_item = item->get_parent();
   if(_parent_item){
@@ -641,6 +631,11 @@ void LuaVariableTree::_set_tree_item_value(TreeItem* item, const I_variant* valu
     nil_var _nvar;
     const I_variant* _set_value = value? value: &_nvar;
     _tvar->set_value(_iter->second->this_key, _set_value);
+
+    // value should use the value that has been set to a table
+    I_variant* _set_result = _tvar->get_value(_iter->second->this_key);
+    if(_set_result)
+      value = _set_result;
 } // enclosure closing
     skip_value_set:{}
 } // enclosure closing
@@ -670,8 +665,15 @@ void LuaVariableTree::_set_tree_item_value(TreeItem* item, const I_variant* valu
   
   if(value){
     _add_reference_lookup_value(item, value);
-    _iter->second->this_value = cpplua_create_var_copy(value);
+    _iter->second->this_value = value;
   }
+} // enclosure closing
+  return;
+
+  on_error_label:{}
+
+  if(value)
+    cpplua_delete_variant(value);
 }
 
 void LuaVariableTree::_set_tree_item_value_as_copy(TreeItem* item){
@@ -696,6 +698,25 @@ void LuaVariableTree::_set_tree_item_value_as_copy(TreeItem* item){
   }
 
   _update_tree_item(_iter->second->this_item, NULL);
+}
+
+void LuaVariableTree::_set_tree_item_from_parent(godot::TreeItem* child_item, const lua::I_variant* key){
+  TreeItem* _parent_item = child_item->get_parent();
+  auto _iter = _vartree_map.find(child_item->get_instance_id());
+  if(_iter == _vartree_map.end())
+    return;
+
+  auto _parent_iter = _vartree_map.find(_parent_item->get_instance_id());
+  if(_parent_iter == _vartree_map.end())
+    return;
+
+  if(!_parent_iter->second->this_value->is_type(I_table_var::get_static_lua_type()))
+    return;
+
+  I_table_var* _tvar = dynamic_cast<I_table_var*>(_parent_iter->second->this_value);
+  I_variant* _value = _tvar->get_value(key);
+  _set_tree_item_key(child_item, key);
+  _set_tree_item_value_direct(child_item, _value);
 }
 
 void LuaVariableTree::_remove_tree_item(TreeItem* item){
@@ -959,12 +980,17 @@ void LuaVariableTree::_variable_setter_do_popup_add_table_item(TreeItem* parent_
       _usage_data.parent_id = parent_item->get_instance_id();
       
     _popup_variable_setter->set_edit_flag(flag);
+    SignalOwnership(Signal(_popup_variable_setter, PopupVariableSetter::s_cancelled), Callable(this, "_on_setter_cancelled"))
+      .replace_ownership();
     SignalOwnership(Signal(_popup_variable_setter, PopupVariableSetter::s_applied), Callable(this, "_on_setter_applied").bind(convert_to_variant(&_usage_data)))
       .replace_ownership();
 
     Vector2 _mouse_pos = get_tree()->get_root()->get_mouse_position();
     _popup_variable_setter->set_position(_mouse_pos);
+
+    _on_variable_setter_popup();
     _popup_variable_setter->popup();
+    _is_using_variable_setter = true;
   }
 }
 
@@ -1097,6 +1123,87 @@ void LuaVariableTree::_open_context_menu(){
   Vector2 _mouse_pos = get_tree()->get_root()->get_mouse_position();
   _global_context_menu->set_position(_mouse_pos);
   _global_context_menu->popup();
+}
+
+
+void LuaVariableTree::_on_variable_setter_popup(){
+  ReferenceQueryMenu::ReferenceQueryFunction _query_function;
+    this->_get_reference_query_function(&_query_function);
+
+  _popup_variable_setter->set_reference_query_function_data(_query_function);
+}
+
+void LuaVariableTree::_on_variable_setter_closing(){
+  ReferenceQueryMenu::ReferenceQueryFunction _query_function;
+  _popup_variable_setter->set_reference_query_function_data(_query_function);
+}
+
+
+void LuaVariableTree::_get_data_from_variable_setter(_variable_tree_item_metadata* target_metadata, I_variant** pkey, I_variant** pvalue){
+  uint32_t _mode = _popup_variable_setter->get_mode_type();
+  const PopupVariableSetter::VariableData& _output = _popup_variable_setter->get_output_data();
+
+  // get key
+  string_var _key_str;
+  *pkey = &_key_str; 
+  switch(_last_context_id){
+    break; case context_menu_edit:
+    *pkey = target_metadata->this_key;
+
+    break; default:{
+      uint32_t _edit_flag = _popup_variable_setter->get_edit_flag();
+      if(_edit_flag & PopupVariableSetter::edit_local_key){
+        String _key_gdstr = _popup_variable_setter->get_local_key_applied();
+        _key_str = GDSTR_TO_STDSTR(_key_gdstr);
+      }
+      else{
+        String _key_gdstr = _popup_variable_setter->get_variable_key();
+        _key_str = GDSTR_TO_STDSTR(_key_gdstr);
+      }
+    }
+  }
+
+  *pkey = cpplua_create_var_copy(*pkey);
+
+  // parse value
+  *pvalue = NULL;
+  switch(_mode){
+    break; case PopupVariableSetter::setter_mode_string:{
+      string_var _svar = _output.string_data.c_str();
+      *pvalue = cpplua_create_var_copy(&_svar);
+    }
+
+    break; case PopupVariableSetter::setter_mode_number:{
+      number_var _nvar = _output.number_data;
+      *pvalue = cpplua_create_var_copy(&_nvar);
+    }
+
+    break; case PopupVariableSetter::setter_mode_bool:{
+      bool_var _bvar = _output.bool_data;
+      *pvalue = cpplua_create_var_copy(&_bvar);
+    }
+
+    break; case PopupVariableSetter::setter_mode_add_table:{
+      table_var _tvar;
+      *pvalue = cpplua_create_var_copy(&_tvar);
+    }
+
+    break; case PopupVariableSetter::setter_mode_reference_list:{
+      ReferenceQueryMenu::ReferenceQueryFunction _query_function = _popup_variable_setter->get_reference_query_function_data();
+      PackedByteArray _fetch_value_barr = _query_function.fetch_value_item.call(_output.choosen_reference_id);
+      ReferenceQueryMenu::ReferenceFetchValueResult _fetch_value = parse_variant_data<ReferenceQueryMenu::ReferenceFetchValueResult>(_fetch_value_barr);
+
+      if(!_fetch_value.value)
+        break;
+
+      *pvalue = cpplua_create_var_copy(_fetch_value.value);
+
+      cpplua_delete_variant(_fetch_value.value);
+    }
+
+    break; default:
+      return;
+  }
 }
 
 

@@ -1,6 +1,8 @@
 #ifndef GROUP_INVOKER_HEADER
 #define GROUP_INVOKER_HEADER
 
+#include "gdutils.h"
+
 #include "godot_cpp/classes/node.hpp"
 
 #include "map"
@@ -38,18 +40,13 @@ class GroupInvoker: public godot::Node{
 
     void _ready() override;
 
-    void invoke(const godot::String& group_key, const godot::String& func_name, const godot::Array& parameter);
+    void invokev(const godot::String& group_key, const godot::String& func_name, const godot::Array& parameter);
     
     void set_group_node_data(const godot::Dictionary& data);
     godot::Dictionary get_group_node_data() const;
     
     template<typename... T_Vargs> void invoke(const godot::String& group_key, const godot::String& func_name, const T_Vargs&... args){
-      godot::Array _paramarr;
-      ([&]{
-        _paramarr.append(args);
-      }(), ...);
-
-      invoke(group_key, func_name, _paramarr);
+      invokev(group_key, func_name, gdutils::create_array(args...));
     }
 };
 

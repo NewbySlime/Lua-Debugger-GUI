@@ -4,6 +4,7 @@
 #include "global_variables.h"
 #include "popup_context_menu.h"
 #include "popup_variable_setter.h"
+#include "reference_query_menu.h"
 
 #include "godot_cpp/classes/confirmation_dialog.hpp"
 #include "godot_cpp/classes/tree.hpp"
@@ -70,6 +71,8 @@ class LuaVariableTree: public godot::Tree{
     };
 
   private:
+    bool _is_using_variable_setter = false;
+
     void _item_collapsed_safe(godot::TreeItem* item);
     void _item_collapsed(godot::TreeItem* item);
     void _item_selected();
@@ -81,6 +84,7 @@ class LuaVariableTree: public godot::Tree{
     void _variable_setter_do_popup_add_table_item(godot::TreeItem* parent_item, uint64_t flag = PopupVariableSetter::edit_add_value_edit);
     void _variable_setter_do_popup_add_table_item(godot::TreeItem* parent_item, godot::TreeItem* value_item, uint64_t flag = PopupVariableSetter::edit_add_value_edit);
 
+    void _on_setter_cancelled();
     void _on_setter_applied(const godot::Variant& pass_data);
     void _on_setter_applied_add_table(godot::TreeItem* current_item, lua::I_variant* key, lua::I_variant* value);
     void _on_setter_applied_add_table_confirmed_variant(const godot::Variant& data);
@@ -142,10 +146,13 @@ class LuaVariableTree: public godot::Tree{
     // Key parameter can be NULL to clear the key value.
     // The function will handle adding/remove key and value from parent's table values. 
     void _set_tree_item_key(godot::TreeItem* item, const lua::I_variant* key);
+    void _set_tree_item_key_direct(godot::TreeItem* item, lua::I_variant* key);
     // Value parameter can be NULL to clear the value.
     // The function will handle adding/remove key and value from parent's table values. 
     void _set_tree_item_value(godot::TreeItem* item, const lua::I_variant* value);
+    void _set_tree_item_value_direct(godot::TreeItem* item, lua::I_variant* value);
     void _set_tree_item_value_as_copy(godot::TreeItem* item);
+    void _set_tree_item_from_parent(godot::TreeItem* child_item, const lua::I_variant* key);
     // This both remove values from parent item and delete the TreeItem
     void _remove_tree_item(godot::TreeItem* item);
 
@@ -175,6 +182,13 @@ class LuaVariableTree: public godot::Tree{
 
     virtual void _on_item_created(godot::TreeItem* item){}
     virtual void _on_item_deleting(godot::TreeItem* item){}
+
+    virtual void _on_variable_setter_popup();
+    virtual void _on_variable_setter_closing();
+
+    // pkey and pvalue will be cleaned after by caller
+    virtual void _get_data_from_variable_setter(_variable_tree_item_metadata* target_metadata, lua::I_variant** pkey, lua::I_variant** pvalue);
+    virtual void _get_reference_query_function(ReferenceQueryMenu::ReferenceQueryFunction* func){}
 
     virtual void _update_item_text(godot::TreeItem* item, const lua::I_variant* key, const lua::I_variant* value);
 

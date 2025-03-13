@@ -3,6 +3,7 @@
 
 #include "group_invoker.h"
 #include "option_list_menu.h"
+#include "reference_query_menu.h"
 
 #include "godot_cpp/classes/button.hpp"
 #include "godot_cpp/classes/option_button.hpp"
@@ -34,6 +35,7 @@ class PopupVariableSetter: public godot::PopupPanel{
     static const char* key_string_data;
     static const char* key_number_data;
     static const char* key_boolean_data;
+    static const char* key_reference_list;
 
     static const char* key_type_enum_button;
     static const char* key_accept_button;
@@ -43,7 +45,9 @@ class PopupVariableSetter: public godot::PopupPanel{
     enum SetterMode{
       setter_mode_number,
       setter_mode_string,
-      setter_mode_bool
+      setter_mode_bool,
+      setter_mode_add_table,
+      setter_mode_reference_list
     };
 
     enum EditFlag{
@@ -61,11 +65,16 @@ class PopupVariableSetter: public godot::PopupPanel{
         double number_data = 0;
         std::string string_data;
         bool bool_data = false;
+
+        uint64_t choosen_reference_id = 0;
     };
 
   
   private:
     godot::NodePath _option_list_path;
+    OptionListMenu* _option_list;
+    
+    ReferenceQueryMenu* _reference_query_menu;
 
     GroupInvoker* _ginvoker;
 
@@ -74,12 +83,11 @@ class PopupVariableSetter: public godot::PopupPanel{
 
     uint32_t _current_mode;
 
-    OptionListMenu* _option_list; 
-
     godot::Button* _accept_button;
     godot::Button* _cancel_button;
 
     std::map<int, godot::String> _local_key_lookup;
+    std::map<uint32_t, godot::String> _custom_mode_name;
 
     godot::String _key_name;
     uint32_t _edit_flag;
@@ -101,7 +109,7 @@ class PopupVariableSetter: public godot::PopupPanel{
 
     void _reset_enum_button_config();
 
-  void _update_setter_ui();
+    void _update_setter_ui();
 
     static void _code_initiate();
 
@@ -126,6 +134,12 @@ class PopupVariableSetter: public godot::PopupPanel{
 
     // if var NULL, it will reset
     void set_popup_data(const lua::I_variant* var = NULL);
+
+    void set_custom_setter_mode_name(uint32_t mode, const godot::String& name);
+    void clear_custom_setter_mode_name();
+
+    void set_reference_query_function_data(const ReferenceQueryMenu::ReferenceQueryFunction& func_data);
+    ReferenceQueryMenu::ReferenceQueryFunction get_reference_query_function_data() const;
 
     // DEPRECATED, use SignalOwnership on s_applied
     // NOTE: the callable will be unbound when the popup is no longer be used (on popup_hide).

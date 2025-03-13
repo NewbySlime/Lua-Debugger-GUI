@@ -4,6 +4,7 @@
 #include "gdvariant_util.h"
 #include "logger.h"
 #include "luautil.h"
+#include "reference_query_menu.h"
 #include "signal_ownership.h"
 #include "strutil.h"
 #include "variable_storage.h"
@@ -29,6 +30,10 @@ static const char* text_clipping_placement = "...";
 
 void VariableStorage::_bind_methods(){
   ClassDB::bind_method(D_METHOD("_lua_on_stopping"), &VariableStorage::_lua_on_stopping);
+
+  ClassDB::bind_method(D_METHOD("_reference_query_data", "item_offset", "item_length", "result_data"), &VariableStorage::_reference_query_data);
+  ClassDB::bind_method(D_METHOD("_reference_query_item_count"), &VariableStorage::_reference_query_item_count);
+  ClassDB::bind_method(D_METHOD("_reference_fetch_value", "item_id"), &VariableStorage::_reference_fetch_value);
   
   ClassDB::bind_method(D_METHOD("set_variable_watcher_path", "path"), &VariableStorage::set_variable_watcher_path);
   ClassDB::bind_method(D_METHOD("get_variable_watcher_path"), &VariableStorage::get_variable_watcher_path);
@@ -71,6 +76,16 @@ void VariableStorage::_lua_on_stopping(){
       continue;
 
     _remove_tree_item(_iter->second->this_item);
+  }
+
+  // remove any values that has a reference
+  for(auto _pair: _vartree_map){
+    switch(_pair.second->this_value->get_type()){
+      break; case I_table_var::get_static_lua_type():{
+        I_table_var* _tvar = dynamic_cast<I_table_var*>(_pair.second->this_value);
+        _tvar->remove_reference_values();
+      }
+    }
   }
 }
 
@@ -147,6 +162,49 @@ void VariableStorage::_on_item_created(TreeItem* item){
 
 void VariableStorage::_on_item_deleting(TreeItem* item){
   _flag_check_placeholder_state = true;
+}
+
+
+void VariableStorage::_get_reference_query_function(ReferenceQueryMenu::ReferenceQueryFunction* func){
+  *func = get_reference_query_function();
+}
+
+
+void VariableStorage::_reference_query_data(int item_offset, int item_length, const Variant& result_data){
+  ReferenceQueryMenu::ReferenceQueryResult _result = parse_variant_data<ReferenceQueryMenu::ReferenceQueryResult>(result_data);
+  _result.query_list->clear();
+
+  for(int i = 0; i < item_length; i++){
+    int _idx = i + item_offset;
+    if(_idx < 0 || _idx >= _root_item->get_child_count())
+      break;
+
+    TreeItem* _child_item = _root_item->get_child(_idx);
+    Dictionary _child_data;
+      _child_data["content_preview"] = _child_item->get_text(0);
+
+    _result.query_list->operator[](_child_item->get_instance_id()) = _child_data;
+  }
+}
+
+int VariableStorage::_reference_query_item_count(){
+  return _root_item->get_child_count();
+}
+
+PackedByteArray VariableStorage::_reference_fetch_value(uint64_t item_id){
+  ReferenceQueryMenu::ReferenceFetchValueResult _result;
+    _result.value = NULL;
+
+{ // enclosure for using gotos
+  auto _iter = _vartree_map.find(item_id);
+  if(_iter == _vartree_map.end())
+    goto skip_to_return;
+
+  _result.value = cpplua_create_var_copy(_iter->second->this_value);
+} // enclosure closing
+
+  skip_to_return:{}
+  return convert_to_variant(&_result);
 }
 
 
@@ -283,6 +341,16 @@ void VariableStorage::add_to_storage(const I_variant* var, const I_variant* key,
     _set_tree_item_value_as_copy(_new_item);
 
   _update_tree_item(_new_item, NULL);
+}
+
+
+ReferenceQueryMenu::ReferenceQueryFunction VariableStorage::get_reference_query_function(){
+  ReferenceQueryMenu::ReferenceQueryFunction _query_func_data;
+    _query_func_data.query_data = Callable(this, "_reference_query_data");
+    _query_func_data.query_item_count = Callable(this, "_reference_query_item_count");
+    _query_func_data.fetch_value_item = Callable(this, "_reference_fetch_value");
+
+  return _query_func_data;
 }
 
 

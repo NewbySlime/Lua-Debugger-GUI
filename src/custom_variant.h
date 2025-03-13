@@ -54,7 +54,7 @@ class local_table_var: public lua::variant, public I_local_table_var{
 
     // from_statexx functions will not be used.
     bool from_state(const lua::api::core* lua_core, int stack_idx) override;
-    bool from_state_copy(const lua::api::core* lua_core, int stack_idx) override;
+    bool from_state_copy(const lua::api::core* lua_core, int stack_idx, bool recursive = true) override;
     bool from_object(const lua::I_object_var* obj) override;
 
     // This function wil reuse push_to_stack.
@@ -74,8 +74,12 @@ class local_table_var: public lua::variant, public I_local_table_var{
     // This will replace all local values with NIL values.
     void clear_table() override;
 
+    size_t get_size() const override;
+
     // Will not be used.
-    void as_copy() override;
+    void as_copy(bool recursive = true) override;
+    // Will not be used.
+    void remove_reference_values(bool recursive = true) override;
 
     // Always returns false.
     bool is_reference() const override;

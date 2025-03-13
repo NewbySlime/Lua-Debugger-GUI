@@ -22,8 +22,17 @@ env = SConscript(godotcpp_path+"/SConstruct")
 # - LINKFLAGS are for linking flags
 
 # tweak this if you want to use different folders, or more folders, to store your source code in.
-env.Append(CPPPATH=[source_path+"/"])
-sources = Glob(source_path+"/*.cpp")
+source_list = [
+    source_path+"/",
+    source_path+"/property_modifier/"
+]
+
+compiled_file_ext = "*.cpp"
+
+env.Append(CPPPATH=source_list)
+sources = []
+for v in source_list:
+    sources = sources + Glob(v + compiled_file_ext)
 
 if env["target"] == "template_debug":
     env.Append(CXXFLAGS=["/Z7", "/FS"])

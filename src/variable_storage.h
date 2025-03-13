@@ -8,6 +8,7 @@
 #include "luavariable_tree.h"
 #include "popup_context_menu.h"
 #include "popup_variable_setter.h"
+#include "reference_query_menu.h"
 
 #include "godot_cpp/classes/control.hpp"
 #include "godot_cpp/classes/tree.hpp"
@@ -65,6 +66,12 @@ class VariableStorage: public LuaVariableTree{
     void _on_item_created(godot::TreeItem* item) override;
     void _on_item_deleting(godot::TreeItem* item) override;
 
+    void _get_reference_query_function(ReferenceQueryMenu::ReferenceQueryFunction* func) override;
+  
+    void _reference_query_data(int item_offset, int item_length, const godot::Variant& result_data);
+    int _reference_query_item_count();
+    godot::PackedByteArray _reference_fetch_value(uint64_t item_id);
+
     void _update_item_text(godot::TreeItem* item, const lua::I_variant* key, const lua::I_variant* value) override;
 
   protected:
@@ -77,6 +84,8 @@ class VariableStorage: public LuaVariableTree{
     void _process(double delta) override;
 
     void add_to_storage(const lua::I_variant* var, const lua::I_variant* key = NULL, uint32_t flags = 0);
+
+    ReferenceQueryMenu::ReferenceQueryFunction get_reference_query_function();
 
     void set_variable_watcher_path(const godot::NodePath& path);
     godot::NodePath get_variable_watcher_path() const;

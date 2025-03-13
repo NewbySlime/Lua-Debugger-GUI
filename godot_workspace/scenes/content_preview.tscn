@@ -1,0 +1,29 @@
+[gd_scene format=3 uid="uid://dxmhn8iw44txt"]
+
+[node name="Control" type="BoxContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = -1059.0
+offset_bottom = -625.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+alignment = 1
+
+[node name="GroupInvoker" type="GroupInvoker" parent="."]
+group_node_data = {
+"content_button": [NodePath("../Button")],
+"content_state": [NodePath("../ChosenStateModulate")],
+"content_text": [NodePath("../Button")]
+}
+
+[node name="ChosenStateModulate" type="ChosenStateModulate" parent="."]
+chosen_color = Color(1, 1, 1, 1)
+unchosen_color = Color(0.564962, 0.564962, 0.564962, 1)
+modified_list = [NodePath("../Button")]
+
+[node name="Button" type="Button" parent="."]
+layout_mode = 2
+size_flags_horizontal = 3
+text_overrun_behavior = 3

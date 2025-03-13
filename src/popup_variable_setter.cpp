@@ -3,6 +3,7 @@
 #include "error_trigger.h"
 #include "gdutils.h"
 #include "logger.h"
+#include "node_utils.h"
 #include "option_value_control.h"
 #include "popup_variable_setter.h"
 #include "strutil.h"
@@ -10,6 +11,8 @@
 #include "godot_cpp/classes/engine.hpp"
 #include "godot_cpp/classes/option_button.hpp"
 #include "godot_cpp/classes/scene_tree.hpp"
+
+#include "vector"
 
 
 using namespace dynamic_library::util;
@@ -30,6 +33,7 @@ const char* PopupVariableSetter::key_value_data = "value_data";
 const char* PopupVariableSetter::key_string_data = "string_data";
 const char* PopupVariableSetter::key_number_data = "number_data";
 const char* PopupVariableSetter::key_boolean_data = "boolean_data";
+const char* PopupVariableSetter::key_reference_list = "reference_list_data";
 
 const char* PopupVariableSetter::key_type_enum_button = "__type_enum_button";
 const char* PopupVariableSetter::key_accept_button = "__accept_button";
@@ -57,7 +61,8 @@ void PopupVariableSetter::_code_initiate(){
     _setter_mode_enum_lookup = new std::map<String, uint32_t>{
       {PopupVariableSetter::key_string_data, PopupVariableSetter::setter_mode_string},
       {PopupVariableSetter::key_number_data, PopupVariableSetter::setter_mode_number},
-      {PopupVariableSetter::key_boolean_data, PopupVariableSetter::setter_mode_bool}
+      {PopupVariableSetter::key_boolean_data, PopupVariableSetter::setter_mode_bool},
+      {PopupVariableSetter::key_reference_list, PopupVariableSetter::setter_mode_reference_list}
     };
   }
 }
@@ -127,6 +132,7 @@ void PopupVariableSetter::_on_value_set_type_enum_data(const Variant& data){
 
 void PopupVariableSetter::_on_accept_button_pressed(){
   _data_output = _data_init;
+  _data_output.choosen_reference_id = _reference_query_menu->get_chosen_reference_id();
   _data_output.setter_mode = _current_mode;
 
   _applied = true;
@@ -142,6 +148,9 @@ void PopupVariableSetter::_on_cancel_button_pressed(){
 }
 
 void PopupVariableSetter::_on_popup(){
+  _reference_query_menu->set_page(0);
+  _reference_query_menu->choose_reference(0);
+
   _update_setter_ui();
   _applied = false;
 }
@@ -153,13 +162,25 @@ void PopupVariableSetter::_on_popup_hide(){
 
 
 void PopupVariableSetter::_reset_enum_button_config(){
+  std::vector<std::pair<uint32_t, String>> _name_list = {
+    {setter_mode_string, "String"},
+    {setter_mode_number, "Number"},
+    {setter_mode_bool, "Boolean"},
+    {setter_mode_add_table, "Add New Table"},
+    {setter_mode_reference_list, "From Storage"}
+  };
+
   Dictionary _data;
   Dictionary _choice_dict;
-    _choice_dict[setter_mode_string] = "String";
-    _choice_dict[setter_mode_number] = "Number";
-    _choice_dict[setter_mode_bool] = "Boolean";
-  _data["choices"] = _choice_dict;
+  for(auto _pair: _name_list){
+    // check custom
+    auto _iter = _custom_mode_name.find(_pair.first);
+    String _name = _iter != _custom_mode_name.end()? _iter->second: _pair.second;
+    
+    _choice_dict[_pair.first] = _name;
+  }
 
+  _data["choices"] = _choice_dict;
   _option_list->set_value_data(key_type_enum_button, _data);
 }
 
@@ -234,6 +255,14 @@ void PopupVariableSetter::_ready(){
   _ginvoker = find_any_node<GroupInvoker>(_option_list);
   if(!_ginvoker){
     GameUtils::Logger::print_err_static("[PopupVariableSetter] Cannot get GroupInvoker from OptionListMenu children.");
+    _quit_code = ERR_UNCONFIGURED;
+
+    goto on_error_label;
+  }
+
+  _reference_query_menu = get_any_node<ReferenceQueryMenu>(this, true);
+  if(!_reference_query_menu){
+    GameUtils::Logger::print_err_static("[PopupVariableSetter] Cannot get ReferenceQueryMenu in child.");
     _quit_code = ERR_UNCONFIGURED;
 
     goto on_error_label;
@@ -335,6 +364,24 @@ void PopupVariableSetter::set_popup_data(const I_variant* var){
       GameUtils::Logger::print_warn_static(gd_format_str("[PopupVariableSetter] Type '{0}' is not yet supported.", var->get_type()));
     }
   }
+}
+
+
+void PopupVariableSetter::set_custom_setter_mode_name(uint32_t mode, const String& name){
+  _custom_mode_name[mode] = name;
+}
+
+void PopupVariableSetter::clear_custom_setter_mode_name(){
+  _custom_mode_name.clear();
+}
+
+
+void PopupVariableSetter::set_reference_query_function_data(const ReferenceQueryMenu::ReferenceQueryFunction& func_data){
+  _reference_query_menu->set_reference_query_function_data(func_data);
+}
+
+ReferenceQueryMenu::ReferenceQueryFunction PopupVariableSetter::get_reference_query_function_data() const{
+  return _reference_query_menu->get_reference_query_function_data();
 }
 
 

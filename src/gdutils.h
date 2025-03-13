@@ -16,6 +16,15 @@ namespace gdutils{
 
   godot::Variant parse_str_to_var(godot::Variant::Type expected_var, const godot::String& str, godot::String* fail_reason = NULL);
 
+  template<typename... T_Vargs> godot::Array create_array(const T_Vargs&... args){
+    godot::Array _result;
+    ([&]{
+      _result.append(args);
+    }(), ...);
+
+    return _result;
+  }
+
   // The reason of class instead of static function approach to mitigate DLL restriction where the dynamic memory cannot be used while the DLL is initiating.
   class VariantTypeParser{
     private:

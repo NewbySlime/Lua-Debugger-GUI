@@ -1,8 +1,10 @@
-[gd_scene format=3 uid="uid://dwyokcxe5rwmk"]
+[gd_scene load_steps=2 format=3 uid="uid://dwyokcxe5rwmk"]
+
+[ext_resource type="PackedScene" uid="uid://ic2e36e5t0h5" path="res://scenes/reference_query_menu.tscn" id="1_t2bju"]
 
 [node name="SettingsList" type="OptionListMenu"]
 physics_interpolation_mode = 0
-custom_minimum_size = Vector2(320, 240)
+custom_minimum_size = Vector2(320, 320)
 offset_right = 320.0
 offset_bottom = 240.0
 size_flags_horizontal = 6
@@ -13,6 +15,7 @@ group_node_data = {
 "boolean_data": [NodePath("../MarginContainer/VBoxContainer/ValueEdit/VBoxContainer/BooleanEdit")],
 "local_key_data": [NodePath("../MarginContainer/VBoxContainer/LocalKeyEdit")],
 "number_data": [NodePath("../MarginContainer/VBoxContainer/ValueEdit/VBoxContainer/NumberEdit")],
+"reference_list_data": [NodePath("../MarginContainer/VBoxContainer/ValueEdit/VBoxContainer/ReferenceList")],
 "string_data": [NodePath("../MarginContainer/VBoxContainer/ValueEdit/VBoxContainer/StringEdit")],
 "value_data": [NodePath("../MarginContainer/VBoxContainer/ValueEdit")],
 "variable_key_data": [NodePath("../MarginContainer/VBoxContainer/VariableKeyEdit")]
@@ -40,10 +43,12 @@ horizontal_alignment = 1
 [node name="LocalKeyEdit" type="OptionValueControl" parent="MarginContainer/VBoxContainer"]
 option_key = "local_key_data"
 physics_interpolation_mode = 0
+visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 
 [node name="KeyContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer/LocalKeyEdit"]
+visible = false
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
@@ -85,7 +90,7 @@ horizontal_scroll_mode = 0
 [node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer/VBoxContainer/ValueEdit"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 0
+size_flags_vertical = 3
 theme_override_constants/separation = 5
 
 [node name="EnumButton" type="OptionValueControl" parent="MarginContainer/VBoxContainer/ValueEdit/VBoxContainer"]
@@ -101,6 +106,7 @@ alignment = 1
 [node name="StringEdit" type="OptionValueControl" parent="MarginContainer/VBoxContainer/ValueEdit/VBoxContainer"]
 option_key = "string_data"
 physics_interpolation_mode = 0
+visible = false
 layout_mode = 2
 
 [node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer/ValueEdit/VBoxContainer/StringEdit"]
@@ -121,6 +127,7 @@ size_flags_horizontal = 3
 [node name="NumberEdit" type="OptionValueControl" parent="MarginContainer/VBoxContainer/ValueEdit/VBoxContainer"]
 option_key = "number_data"
 physics_interpolation_mode = 0
+visible = false
 layout_mode = 2
 
 [node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer/ValueEdit/VBoxContainer/NumberEdit"]
@@ -144,6 +151,7 @@ custom_arrow_step = 0.1
 [node name="BooleanEdit" type="OptionValueControl" parent="MarginContainer/VBoxContainer/ValueEdit/VBoxContainer"]
 option_key = "boolean_data"
 physics_interpolation_mode = 0
+visible = false
 layout_mode = 2
 
 [node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer/ValueEdit/VBoxContainer/BooleanEdit"]
@@ -159,6 +167,9 @@ text = "Boolean
 [node name="CheckButton" type="CheckButton" parent="MarginContainer/VBoxContainer/ValueEdit/VBoxContainer/BooleanEdit/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 6
+
+[node name="ReferenceList" parent="MarginContainer/VBoxContainer/ValueEdit/VBoxContainer" instance=ExtResource("1_t2bju")]
+layout_mode = 2
 
 [node name="Padding" type="MarginContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
