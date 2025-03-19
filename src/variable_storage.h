@@ -31,8 +31,13 @@ class VariableStorage: public LuaVariableTree{
     };
 
   private:
+    enum _button_id_enum{
+      button_id_disable_auto_import = 0x10001
+    };
+
     enum _context_menu_type{
-      context_menu_as_copy = 0x10001
+      context_menu_as_copy = 0x10001,
+      context_menu_toggle_auto_import = 0x10002
     };
 
     LuaProgramHandle* _program_handle;
@@ -41,7 +46,7 @@ class VariableStorage: public LuaVariableTree{
     std::shared_ptr<LibLuaStore> _lua_lib_data;
 
     godot::TreeItem* _root_item = NULL;
-    godot::Ref<godot::Texture> _context_menu_button_icon;
+    godot::Ref<godot::Texture> _disable_auto_import_logo;
 
     GroupInvoker* _ginvoker = NULL;
 
@@ -51,8 +56,11 @@ class VariableStorage: public LuaVariableTree{
     godot::NodePath _vwatcher_path;
     VariableWatcher* _vwatcher = NULL;
 
+    std::set<uint64_t> _auto_import_to_runtime_list;
+
     bool _flag_check_placeholder_state = false;
 
+    void _lua_on_starting();
     void _lua_on_stopping();
 
     void _on_context_menu_change_alias();
@@ -62,9 +70,14 @@ class VariableStorage: public LuaVariableTree{
 
     void _add_custom_context(_variable_tree_item_metadata* metadata, PopupContextMenu::MenuData& data) override;
     void _check_custom_context(int id) override;
+    void _check_custom_button_id(int id) override;
 
     void _on_item_created(godot::TreeItem* item) override;
     void _on_item_deleting(godot::TreeItem* item) override;
+
+    void _on_variable_setter_popup() override;
+
+    void _toggle_auto_import_to_runtime(uint64_t id);
 
     void _get_reference_query_function(ReferenceQueryMenu::ReferenceQueryFunction* func) override;
   
@@ -89,6 +102,9 @@ class VariableStorage: public LuaVariableTree{
 
     void set_variable_watcher_path(const godot::NodePath& path);
     godot::NodePath get_variable_watcher_path() const;
+
+    void set_disable_auto_import_logo(godot::Ref<godot::Texture> logo);
+    godot::Ref<godot::Texture> get_disable_auto_import_logo() const;
 };
 
 #endif

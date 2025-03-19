@@ -28,6 +28,8 @@ class ConsoleWindow: public godot::Control{
     int _ob_index_bottom = 0;
     bool _ob_is_repeating = false;
 
+    size_t _added_line_count = 0;
+
     godot::Color _log_color;
     godot::Color _warn_color;
     godot::Color _err_color;
@@ -46,6 +48,7 @@ class ConsoleWindow: public godot::Control{
     godot::String _wrap_color(const godot::String& str, godot::Color col);
 
     void _on_input_entered(godot::String str);
+    void _on_output_text_finished();
 
     void _add_string_to_output_buffer(const std::string& str);
     void _write_to_output_text();
@@ -58,11 +61,12 @@ class ConsoleWindow: public godot::Control{
     ~ConsoleWindow();
 
     void _ready() override;
+    void _process(double delta) override;
 
     void clear_output_buffer();
     void append_output_buffer(const std::string& str);
 
-  godot::NodePath get_output_text_path() const;
+    godot::NodePath get_output_text_path() const;
     void set_output_text_path(godot::NodePath path);
 
     godot::NodePath get_input_text_path() const;

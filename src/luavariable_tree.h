@@ -30,7 +30,8 @@ class LuaVariableTree: public godot::Tree{
 
   protected:
     enum _button_id_enum{
-      button_id_context_menu
+      button_id_context_menu = 0x1
+      // To add more custom button enum, preferably to use more than 0x10000
     };
 
     enum _context_menu_id_enum{
@@ -178,6 +179,7 @@ class LuaVariableTree: public godot::Tree{
     
     virtual void _add_custom_context(_variable_tree_item_metadata* metadata, PopupContextMenu::MenuData& data){}
     virtual void _check_custom_context(int id){}
+    virtual void _check_custom_button_id(int id){}
     virtual bool _check_ignored_variable(_variable_tree_item_metadata* metadata, const lua::I_variant* key){return false;}
 
     virtual void _on_item_created(godot::TreeItem* item){}

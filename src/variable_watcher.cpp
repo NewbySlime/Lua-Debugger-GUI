@@ -292,6 +292,12 @@ void VariableWatcher::_check_custom_context(int id){
 }
 
 
+void VariableWatcher::_on_variable_setter_popup(){
+  LuaVariableTree::_on_variable_setter_popup();
+  _popup_variable_setter->set_custom_setter_mode_name(PopupVariableSetter::setter_mode_reference_list, "From Reference (Storage)");
+}
+
+
 void VariableWatcher::_get_reference_query_function(ReferenceQueryMenu::ReferenceQueryFunction* func){
   *func = _vstorage->get_reference_query_function();
 }

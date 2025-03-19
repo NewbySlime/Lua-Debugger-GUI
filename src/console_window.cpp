@@ -1,5 +1,6 @@
-#include "console_window.h"
 #include "defines.h"
+
+#include "console_window.h"
 #include "error_trigger.h"
 #include "gdutils.h"
 #include "logger.h"
@@ -9,6 +10,7 @@
  
 #include "godot_cpp/classes/engine.hpp"
 #include "godot_cpp/classes/scene_tree.hpp"
+#include "godot_cpp/classes/v_scroll_bar.hpp"
 #include "godot_cpp/core/class_db.hpp"
 #include "godot_cpp/core/math.hpp"
 
@@ -24,9 +26,12 @@ using namespace lua::global;
 const char* ConsoleWindow::s_input_entered = "input_entered";
 Color ConsoleWindow::placeholder_text_color = gdutils::construct_color(0x7F7F7FFF);
 
+static const uint32_t _autoscroll_trigger_bottom_bound_px = 20;
+
 
 void ConsoleWindow::_bind_methods(){
   ClassDB::bind_method(D_METHOD("_on_input_entered", "input_data"), &ConsoleWindow::_on_input_entered);
+  ClassDB::bind_method(D_METHOD("_on_output_text_finished"), &ConsoleWindow::_on_output_text_finished);
 
   ClassDB::bind_method(D_METHOD("get_output_text_path"), &ConsoleWindow::get_output_text_path);
   ClassDB::bind_method(D_METHOD("set_output_text_path", "path"), &ConsoleWindow::set_output_text_path);
@@ -112,8 +117,28 @@ void ConsoleWindow::_on_input_entered(String str){
   _input_text->set_text("");
 }
 
+void ConsoleWindow::_on_output_text_finished(){
+  // move scroll placement if repeating
+  if(!_output_text->is_scroll_following() && _ob_is_repeating){
+    int _line_height = _output_text->get_line_offset(1) - _output_text->get_line_offset(0);
+    
+    VScrollBar* _output_vsbar = _output_text->get_v_scroll_bar();
+    _output_vsbar->set_value(_output_vsbar->get_value() - (_line_height * _added_line_count));
+  }
+}
+
 
 void ConsoleWindow::_add_string_to_output_buffer(const std::string& str){
+  // get line count in the appended string
+  std::set<char> _newline_charset = {'\n', '\r'};
+  _added_line_count = 0;
+  for(char _c: str){
+    if(_newline_charset.find(_c) == _newline_charset.end())
+      continue;
+
+    _added_line_count++;
+  }
+
   int _str_idx = 0;
   while(_str_idx < str.size()){
     int _write_available = CONSOLE_WINDOW_OUTPUT_BUFFER_SIZE - _ob_index_top;
@@ -210,6 +235,8 @@ void ConsoleWindow::_ready(){
   connect(s_input_entered, Callable(_program_handle, "append_input"));
   _input_text->connect("text_submitted", Callable(this, "_on_input_entered"));
 
+  _output_text->connect("finished", Callable(this, "_on_output_text_finished"));
+
   _output_text->set_text("");
   _input_text->set_text("");
 
@@ -224,6 +251,20 @@ void ConsoleWindow::_ready(){
 
     get_tree()->quit(_quit_code);
   return;}
+}
+
+void ConsoleWindow::_process(double delta){
+  Engine* _engine = Engine::get_singleton();
+  if(_engine->is_editor_hint())
+    return;
+
+  VScrollBar* _output_vsbar = _output_text->get_v_scroll_bar();
+  int _height = _output_text->get_size().y;
+  double _max = _output_vsbar->get_max();
+  double _value = _output_vsbar->get_value();
+  double _bottom_scroll = _value + _height;
+  double _autoscroll_bottom_bound = _max - _autoscroll_trigger_bottom_bound_px;
+  _output_text->set_scroll_follow(_bottom_scroll >= _autoscroll_bottom_bound);
 }
 
 

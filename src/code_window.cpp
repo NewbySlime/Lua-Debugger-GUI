@@ -1,6 +1,7 @@
+#include "defines.h"
+
 #include "code_window.h"
 #include "common_event.h"
-#include "defines.h"
 #include "directory_util.h"
 #include "error_trigger.h"
 #include "logger.h"

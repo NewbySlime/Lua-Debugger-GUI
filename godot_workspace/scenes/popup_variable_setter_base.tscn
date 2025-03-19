@@ -17,6 +17,7 @@ group_node_data = {
 "number_data": [NodePath("../MarginContainer/VBoxContainer/ValueEdit/VBoxContainer/NumberEdit")],
 "reference_list_data": [NodePath("../MarginContainer/VBoxContainer/ValueEdit/VBoxContainer/ReferenceList")],
 "string_data": [NodePath("../MarginContainer/VBoxContainer/ValueEdit/VBoxContainer/StringEdit")],
+"use_reference_key_flag_data": [NodePath("../MarginContainer/VBoxContainer/UseReferenceKeyEdit")],
 "value_data": [NodePath("../MarginContainer/VBoxContainer/ValueEdit")],
 "variable_key_data": [NodePath("../MarginContainer/VBoxContainer/VariableKeyEdit")]
 }
@@ -81,6 +82,23 @@ text = "Key"
 [node name="LineEdit" type="LineEdit" parent="MarginContainer/VBoxContainer/VariableKeyEdit/KeyContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
+
+[node name="UseReferenceKeyEdit" type="OptionValueControl" parent="MarginContainer/VBoxContainer"]
+option_key = "use_reference_key_flag_data"
+layout_mode = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer/UseReferenceKeyEdit"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Label" type="Label" parent="MarginContainer/VBoxContainer/UseReferenceKeyEdit/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Use Reference Key"
+
+[node name="CheckBox" type="CheckBox" parent="MarginContainer/VBoxContainer/UseReferenceKeyEdit/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 8
 
 [node name="ValueEdit" type="ScrollContainer" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2

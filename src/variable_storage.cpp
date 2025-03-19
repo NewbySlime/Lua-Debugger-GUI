@@ -13,11 +13,15 @@
 #include "godot_cpp/classes/engine.hpp"
 #include "godot_cpp/classes/scene_tree.hpp"
 
+#include "Lua-CPPAPI/Src/luaapi_stack.h"
+#include "Lua-CPPAPI/Src/luaapi_value.h"
+
 #include "vector"
 
 using namespace gdutils;
 using namespace godot;
 using namespace lua;
+using namespace lua::api;
 using namespace lua::util;
 
 
@@ -29,6 +33,7 @@ static const char* text_clipping_placement = "...";
 
 
 void VariableStorage::_bind_methods(){
+  ClassDB::bind_method(D_METHOD("_lua_on_starting"), &VariableStorage::_lua_on_starting);
   ClassDB::bind_method(D_METHOD("_lua_on_stopping"), &VariableStorage::_lua_on_stopping);
 
   ClassDB::bind_method(D_METHOD("_reference_query_data", "item_offset", "item_length", "result_data"), &VariableStorage::_reference_query_data);
@@ -38,7 +43,11 @@ void VariableStorage::_bind_methods(){
   ClassDB::bind_method(D_METHOD("set_variable_watcher_path", "path"), &VariableStorage::set_variable_watcher_path);
   ClassDB::bind_method(D_METHOD("get_variable_watcher_path"), &VariableStorage::get_variable_watcher_path);
 
+  ClassDB::bind_method(D_METHOD("set_disable_auto_import_logo", "logo"), &VariableStorage::set_disable_auto_import_logo);
+  ClassDB::bind_method(D_METHOD("get_disable_auto_import_logo"), &VariableStorage::get_disable_auto_import_logo);
+
   ADD_PROPERTY(PropertyInfo(Variant::NODE_PATH, "variable_watcher_path"), "set_variable_watcher_path", "get_variable_watcher_path");
+  ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "disable_auto_import_logo", PROPERTY_HINT_RESOURCE_TYPE, "Texture"), "set_disable_auto_import_logo", "get_disable_auto_import_logo");
 }
 
 
@@ -46,6 +55,29 @@ VariableStorage::~VariableStorage(){
   _clear_variable_tree();
 }
 
+
+void VariableStorage::_lua_on_starting(){
+  I_runtime_handler* _rh = _program_handle->get_runtime_handler();
+  core _lc = _rh->get_lua_core_copy();
+  
+  _lc.context->api_value->pushglobaltable(_lc.istate);
+  for(uint64_t _id: _auto_import_to_runtime_list){
+    auto _iter = _vartree_map.find(_id);
+    if(_iter == _vartree_map.end())
+      continue;
+
+    if(!_iter->second->this_key || !_iter->second->this_value){
+      GameUtils::Logger::print_err_static("[VariableStorage] Cannot do auto import. Reason: key or value object is NULL.");
+      continue;
+    }
+
+    _iter->second->this_key->push_to_stack(&_lc);
+    _iter->second->this_value->push_to_stack(&_lc);
+    _lc.context->api_value->settable(_lc.istate, -3);
+  }
+
+  _lc.context->api_stack->pop(_lc.istate, 1);
+}
 
 void VariableStorage::_lua_on_stopping(){
   std::vector<uint64_t> _removed_list;
@@ -122,7 +154,6 @@ void VariableStorage::_update_placeholder_state(){
 
 void VariableStorage::_add_custom_context(_variable_tree_item_metadata* metadata, PopupContextMenu::MenuData& data){
   PopupContextMenu::MenuData::Part _tmp_part;
-
   
   if(metadata->this_value){
     // check if the value is reference or not
@@ -145,12 +176,35 @@ void VariableStorage::_add_custom_context(_variable_tree_item_metadata* metadata
 
     skip_reference_checking:{}
   }
+
+  // check if first layer of the item (the only one that can be auto import)
+  if(metadata->this_item->get_parent() == _root_item){
+    auto _aitr_iter = _auto_import_to_runtime_list.find(metadata->this_item->get_instance_id());
+    
+      _tmp_part.item_type = PopupContextMenu::MenuData::type_normal;
+      _tmp_part.label = _aitr_iter == _auto_import_to_runtime_list.end()? "Enable Auto Import": "Disable Auto Import";
+      _tmp_part.id = context_menu_toggle_auto_import;
+    data.part_list.insert(data.part_list.end(), _tmp_part);
+  }
 }
 
 void VariableStorage::_check_custom_context(int id){
   switch(id){
     break; case context_menu_as_copy:{
       _on_context_menu_as_copy();
+    }
+
+    break; case context_menu_toggle_auto_import:{
+      _toggle_auto_import_to_runtime(_last_selected_id);
+    }
+  }
+}
+
+
+void VariableStorage::_check_custom_button_id(int id){
+  switch(id){
+    break; case button_id_disable_auto_import:{
+      _toggle_auto_import_to_runtime(_last_selected_id);
     }
   }
 }
@@ -162,6 +216,33 @@ void VariableStorage::_on_item_created(TreeItem* item){
 
 void VariableStorage::_on_item_deleting(TreeItem* item){
   _flag_check_placeholder_state = true;
+}
+
+
+void VariableStorage::_on_variable_setter_popup(){
+  LuaVariableTree::_on_variable_setter_popup();
+  _popup_variable_setter->set_custom_setter_mode_name(PopupVariableSetter::setter_mode_reference_list, "From Reference (Storage)");
+}
+
+
+void VariableStorage::_toggle_auto_import_to_runtime(uint64_t id){
+  auto _item_iter = _vartree_map.find(id);
+  if(_item_iter == _vartree_map.end())
+    return;
+
+  auto _iter = _auto_import_to_runtime_list.find(id);
+  if(_iter == _auto_import_to_runtime_list.end()){\
+    _auto_import_to_runtime_list.insert(id);
+    _item_iter->second->this_item->add_button(0, _disable_auto_import_logo, button_id_disable_auto_import, false, "Disable Auto Import");
+
+    return;
+  }
+  
+  _auto_import_to_runtime_list.erase(id);
+
+  int _button_idx = _item_iter->second->this_item->get_button_by_id(0, button_id_disable_auto_import);
+  if(_button_idx >= 0)
+    _item_iter->second->this_item->erase_button(0, _button_idx);
 }
 
 
@@ -200,7 +281,11 @@ PackedByteArray VariableStorage::_reference_fetch_value(uint64_t item_id){
   if(_iter == _vartree_map.end())
     goto skip_to_return;
 
-  _result.value = cpplua_create_var_copy(_iter->second->this_value);
+  if(_iter->second->this_key)
+    _result.key = cpplua_create_var_copy(_iter->second->this_key);
+  
+  if(_iter->second->this_value)
+    _result.value = cpplua_create_var_copy(_iter->second->this_value);
 } // enclosure closing
 
   skip_to_return:{}
@@ -302,6 +387,7 @@ void VariableStorage::_ready(){
 
   _lua_lib_data = _lua_lib->get_library_store();
   
+  _program_handle->connect(LuaProgramHandle::s_starting, Callable(this, "_lua_on_starting"));
   _program_handle->connect(LuaProgramHandle::s_stopping, Callable(this, "_lua_on_stopping"));
 } // enclosure closing
 
@@ -360,4 +446,13 @@ void VariableStorage::set_variable_watcher_path(const NodePath& path){
 
 NodePath VariableStorage::get_variable_watcher_path() const{
   return _vwatcher_path;
+}
+
+
+void VariableStorage::set_disable_auto_import_logo(Ref<Texture> logo){
+  _disable_auto_import_logo = logo;
+}
+
+Ref<Texture> VariableStorage::get_disable_auto_import_logo() const{
+  return _disable_auto_import_logo;
 }

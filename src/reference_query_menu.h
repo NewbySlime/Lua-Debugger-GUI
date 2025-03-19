@@ -43,6 +43,9 @@ class ReferenceQueryMenu: public godot::Control{
     struct ReferenceFetchValueResult{
       // This can result in NULL if the item ID is not valid.
       // NOTE: Don't forget to free the variant
+      lua::I_variant* key = NULL;
+      // This can result in NULL if the item ID is not valid.
+      // NOTE: Don't forget to free the variant
       lua::I_variant* value = NULL;
     };
 

@@ -30,6 +30,7 @@ class PopupVariableSetter: public godot::PopupPanel{
     static const char* key_variable_key_data;
     // This assumes that the parent of the node will be hidden if not used.
     static const char* key_local_key_data;
+    static const char* key_use_reference_key_flag_data;
     static const char* key_value_data;
 
     static const char* key_string_data;
@@ -67,6 +68,7 @@ class PopupVariableSetter: public godot::PopupPanel{
         bool bool_data = false;
 
         uint64_t choosen_reference_id = 0;
+        bool use_reference_key = false;
     };
 
   
@@ -101,6 +103,7 @@ class PopupVariableSetter: public godot::PopupPanel{
     void _on_value_set_number_data(const godot::Variant& data);
     void _on_value_set_bool_data(const godot::Variant& data);
     void _on_value_set_type_enum_data(const godot::Variant& data);
+    void _on_value_set_use_reference_key_flag_data(const godot::Variant& data);
 
     void _on_accept_button_pressed();
     void _on_cancel_button_pressed();
@@ -110,6 +113,7 @@ class PopupVariableSetter: public godot::PopupPanel{
     void _reset_enum_button_config();
 
     void _update_setter_ui();
+    void _update_use_reference_key_flag();
 
     static void _code_initiate();
 

@@ -1,4 +1,4 @@
-[gd_scene load_steps=38 format=3 uid="uid://cgjecodaf2s77"]
+[gd_scene load_steps=39 format=3 uid="uid://cgjecodaf2s77"]
 
 [ext_resource type="PackedScene" uid="uid://bbpgcr0g21epu" path="res://scenes/clone/code_context.tscn" id="1_b2mtp"]
 [ext_resource type="SystemFont" uid="uid://c8jm14y54ky2t" path="res://resource/styles/text/code_font.tres" id="1_n2lrs"]
@@ -17,6 +17,7 @@
 [ext_resource type="Texture2D" uid="uid://bvrouncobb0s0" path="res://resource/images/logo/ThreeHorizontalDot-32px-32px.png" id="14_elorr"]
 [ext_resource type="FontFile" uid="uid://rrk4cxfo1ek6" path="res://resource/fonts/SourceCodePro/static/SourceCodePro-Light.ttf" id="14_yx8cj"]
 [ext_resource type="Texture2D" uid="uid://d060ofcipcuyv" path="res://resource/images/logo/SettingsBackLogo.png" id="15_o08uj"]
+[ext_resource type="Texture2D" uid="uid://bk8p8iug1ky0r" path="res://resource/images/logo/DisconnectLogo-32px-32px.png" id="15_ppo5v"]
 [ext_resource type="FontFile" uid="uid://cnhf3i2ofscsa" path="res://resource/fonts/SourceCodePro/static/SourceCodePro-Medium.ttf" id="16_kr13r"]
 [ext_resource type="Texture2D" uid="uid://cmht7r1hiw5v0" path="res://icon.svg" id="17_sxuvq"]
 
@@ -465,6 +466,7 @@ vertical_alignment = 1
 
 [node name="Variable Storage" type="VariableStorage" parent="VSplitContainer/HSplitContainer/InspectWindowContainer/InspectWindow/MarginContainer/TabContainer"]
 variable_watcher_path = NodePath("../Variable Inspector")
+disable_auto_import_logo = ExtResource("15_ppo5v")
 variable_tree_path = NodePath("VariableTree")
 context_menu_button_texture = ExtResource("14_elorr")
 visible = false

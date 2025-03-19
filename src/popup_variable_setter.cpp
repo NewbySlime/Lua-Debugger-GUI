@@ -28,6 +28,7 @@ const char* PopupVariableSetter::s_mode_type_changed = "mode_type_changed";
 
 const char* PopupVariableSetter::key_variable_key_data = "variable_key_data";
 const char* PopupVariableSetter::key_local_key_data = "local_key_data";
+const char* PopupVariableSetter::key_use_reference_key_flag_data = "use_reference_key_flag_data";
 const char* PopupVariableSetter::key_value_data = "value_data";
 
 const char* PopupVariableSetter::key_string_data = "string_data";
@@ -53,7 +54,8 @@ void PopupVariableSetter::_code_initiate(){
       {PopupVariableSetter::key_string_data, &PopupVariableSetter::_on_value_set_string_data},
       {PopupVariableSetter::key_number_data, &PopupVariableSetter::_on_value_set_number_data},
       {PopupVariableSetter::key_boolean_data, &PopupVariableSetter::_on_value_set_bool_data},
-      {PopupVariableSetter::key_type_enum_button, &PopupVariableSetter::_on_value_set_type_enum_data}
+      {PopupVariableSetter::key_type_enum_button, &PopupVariableSetter::_on_value_set_type_enum_data},
+      {PopupVariableSetter::key_use_reference_key_flag_data, &PopupVariableSetter::_on_value_set_use_reference_key_flag_data}
     };
   }
 
@@ -129,6 +131,11 @@ void PopupVariableSetter::_on_value_set_type_enum_data(const Variant& data){
   _type_enum_button_signal = false;
 }
 
+void PopupVariableSetter::_on_value_set_use_reference_key_flag_data(const Variant& data){
+  _data_init.use_reference_key = data;
+  _update_use_reference_key_flag();
+}
+
 
 void PopupVariableSetter::_on_accept_button_pressed(){
   _data_output = _data_init;
@@ -167,7 +174,7 @@ void PopupVariableSetter::_reset_enum_button_config(){
     {setter_mode_number, "Number"},
     {setter_mode_bool, "Boolean"},
     {setter_mode_add_table, "Add New Table"},
-    {setter_mode_reference_list, "From Storage"}
+    {setter_mode_reference_list, "From Reference"}
   };
 
   Dictionary _data;
@@ -186,13 +193,19 @@ void PopupVariableSetter::_reset_enum_button_config(){
 
 
 void PopupVariableSetter::_update_setter_ui(){
+  _reset_enum_button_config();
+
   if(_edit_flag & edit_add_key_edit){
     _ginvoker->invoke(key_local_key_data, "set_visible", (bool)(_edit_flag & edit_local_key));
     _ginvoker->invoke(key_variable_key_data, "set_visible", !(bool)(_edit_flag & edit_local_key));
+
+    _data_output.use_reference_key = false;
+    _update_use_reference_key_flag();
   }
   else{
     _ginvoker->invoke(key_local_key_data, "set_visible", false);
     _ginvoker->invoke(key_variable_key_data, "set_visible", false);
+    _ginvoker->invoke(key_use_reference_key_flag_data, "set_visible", false);
   }
 
   _ginvoker->invoke(key_value_data, "set_visible", (bool)(_edit_flag & edit_add_value_edit));
@@ -204,9 +217,24 @@ void PopupVariableSetter::_update_setter_ui(){
     _option_list->set_value_data(key_string_data, _data_init.string_data.c_str());
     _option_list->set_value_data(key_number_data, _data_init.number_data);
     _option_list->set_value_data(key_boolean_data, _data_init.bool_data);
+    _option_list->set_value_data(key_use_reference_key_flag_data, _data_init.use_reference_key);
   }
 
   _data_output = _data_init;
+
+  // set setter mode
+  set_mode_type(_current_mode);
+}
+
+
+void PopupVariableSetter::_update_use_reference_key_flag(){
+  // Use Reference Key Flag
+  bool _use_reference_key_visible = (_edit_flag & edit_add_key_edit) > 0 && (_edit_flag & edit_local_key) <= 0 && _current_mode == setter_mode_reference_list;
+  _ginvoker->invoke(key_use_reference_key_flag_data, "set_visible", _use_reference_key_visible);
+
+  // Check variable key property
+  bool _variable_key_visible = (_edit_flag & edit_add_key_edit) > 0 && (_edit_flag & edit_local_key) <= 0 && !_data_output.use_reference_key;
+  _ginvoker->invoke(key_variable_key_data, "set_visible", _variable_key_visible);
 }
 
 
@@ -268,8 +296,6 @@ void PopupVariableSetter::_ready(){
     goto on_error_label;
   }
 
-  _reset_enum_button_config();
-
   connect("about_to_popup", Callable(this, "_on_popup"));
   connect("popup_hide", Callable(this, "_on_popup_hide"));
 
@@ -307,6 +333,8 @@ void PopupVariableSetter::set_mode_type(uint32_t mode){
 
     _option_list->set_value_data(key_type_enum_button, _data);
   }
+
+  _update_use_reference_key_flag();
 }
 
 uint32_t PopupVariableSetter::get_mode_type() const{
