@@ -64,7 +64,7 @@ class local_table_var: public lua::variant, public I_local_table_var{
 
     void update_keys() override;
 
-    lua::I_variant* get_value(const lua::I_variant* key) override;
+    lua::I_variant* get_value( const lua::I_variant* key) override;
     const lua::I_variant* get_value(const lua::I_variant* key) const override;
 
     void set_value(const lua::I_variant* key, const I_variant* data) override;

@@ -70,13 +70,24 @@ LuaProgramHandle::LuaProgramHandle(){
 
   _event_read = CreateEvent(NULL, TRUE, FALSE, NULL);
 
+  _event_check_signal_mutex = CreateEvent(NULL, FALSE, FALSE, NULL);
+
   InitializeCriticalSection(&_output_mutex);
 #endif
+
+  _event_check_keep_run_thread = true;
+  _event_check_thread = std::thread(_event_check_func, this);
 }
 
 LuaProgramHandle::~LuaProgramHandle(){
   if(is_running())
     _thread_handle->get_interface()->stop_running();
+
+  _event_check_keep_run_thread = false;
+#if (_WIN64) || (_WIN32)
+  SetEvent(_event_check_signal_mutex);
+#endif
+  _event_check_thread.join();
 
   _unload_runtime_handler();
 
@@ -86,6 +97,8 @@ LuaProgramHandle::~LuaProgramHandle(){
   CloseHandle(_event_paused);
 
   CloseHandle(_event_read);
+
+  CloseHandle(_event_check_signal_mutex);
 
   DeleteCriticalSection(&_output_mutex);
 
@@ -353,6 +366,36 @@ void LuaProgramHandle::_on_stopped_restart(){
 }
 
 
+void LuaProgramHandle::_event_check_func(LuaProgramHandle* _this){
+#if (_WIN64) || (_WIN32)
+  HANDLE _handle_list[] = {_this->_event_stopped, _this->_event_resumed, _this->_event_paused, _this->_event_check_signal_mutex};
+  
+  while(_this->_event_check_keep_run_thread){
+    WaitForMultipleObjects(sizeof(_handle_list)/sizeof(HANDLE), _handle_list, false, INFINITE);
+
+{ // enclosure for mutex scoping
+    std::lock_guard<std::mutex> _lock(_this->_event_check_mutex);
+  
+    if(WaitForSingleObject(_this->_event_stopped, 0) == WAIT_OBJECT_0){
+      ResetEvent(_this->_event_stopped);
+      _this->_event_check_list.insert(_this->_event_check_list.end(), event_check_stopped);
+    }
+    
+    if(WaitForSingleObject(_this->_event_resumed, 0) == WAIT_OBJECT_0){
+      ResetEvent(_this->_event_resumed);
+      _this->_event_check_list.insert(_this->_event_check_list.end(), event_check_resumed);
+    }
+
+    if(WaitForSingleObject(_this->_event_paused, 0) == WAIT_OBJECT_0){
+      ResetEvent(_this->_event_paused);
+      _this->_event_check_list.insert(_this->_event_check_list.end(), event_check_paused);
+    }
+} // enclosure closing
+  }
+#endif
+}
+
+
 DWORD LuaProgramHandle::_output_reader_thread_ep(LPVOID data){
   LuaProgramHandle* _this = (LuaProgramHandle*)data;
 
@@ -426,30 +469,40 @@ void LuaProgramHandle::_process(double delta){
   if(!_initialized)
     _init_check();
 
-#if (_WIN64) || (_WIN32)
-  if(WaitForSingleObject(_event_stopped, 0) == WAIT_OBJECT_0){
-    if(_execution_code != LUA_OK){
-      String _msg = String("[ERR] ") + _execution_err_msg.c_str() + "\n";
+  std::vector<int> _event_check_list_copy;
 
-      GameUtils::Logger::print_err_static(_msg);
+{ // enclosure for mutex scoping
+  std::lock_guard<std::mutex> _lock(_event_check_mutex);
+  _event_check_list_copy = _event_check_list;
+  _event_check_list.clear();
+} // enclosure closing
+
+  for(int n: _event_check_list_copy){
+    switch(n){
+      break; case event_check_stopped:{
+        if(_execution_code != LUA_OK){
+          String _msg = String("[ERR] ") + _execution_err_msg.c_str() + "\n";
+    
+          GameUtils::Logger::print_err_static(_msg);
+        }
+    
+        // to allow some callback to start a lua code
+        _unlock_object();
+        _on_stopped();
+        _lock_object();
+      }
+
+      break; case event_check_resumed:{
+        emit_signal(s_resuming);
+      }
+
+      break; case event_check_paused:{
+        emit_signal(s_pausing);
+      }
     }
-
-    // to allow some callback to start a lua code
-    _unlock_object();
-    _on_stopped();
-    _lock_object();
   }
 
-  if(WaitForSingleObject(_event_resumed, 0) == WAIT_OBJECT_0){
-    ResetEvent(_event_resumed);
-    emit_signal(s_resuming);
-  }
-
-  if(WaitForSingleObject(_event_paused, 0) == WAIT_OBJECT_0){
-    ResetEvent(_event_paused);
-    emit_signal(s_pausing);
-  }
-
+#if (_WIN64) || (_WIN32)
   EnterCriticalSection(&_output_mutex);
   if(_output_reading_buffer.length() > 0){
     GameUtils::Logger::print_log_static(_output_reading_buffer);

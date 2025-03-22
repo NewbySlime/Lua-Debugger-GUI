@@ -9,10 +9,9 @@ This is a part of a project: [Lua-Debug-API](https://github.com/NewbySlime/Lua-D
 
 
 ##  Features
-- Easy to use debugging options.
-- Breakpoint feature.
-- Code viewer with line indicator for which line it currently runs.
-- Variables can be viewed in the variable inspector window.
+- Easy to use debugging functions.
+- Variable inspecting.
+- Variable storage for storing any variables that can be transferred to different Lua code runtime.
 - Integrated console window for Lua IO.
 
 ## Limitations

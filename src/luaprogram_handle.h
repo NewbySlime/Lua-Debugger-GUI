@@ -9,6 +9,7 @@
 #include "Lua-CPPAPI/Src/lualibrary_iohandler.h"
 #include "Lua-CPPAPI/Src/luathread_control.h"
 
+#include "thread"
 
 
 class LuaProgramHandle: public godot::Node{
@@ -32,6 +33,12 @@ class LuaProgramHandle: public godot::Node{
 
   private:
     typedef void(LuaProgramHandle::*on_stop_callback)();
+  
+    enum _event_check_enum{
+      event_check_stopped,
+      event_check_resumed,
+      event_check_paused
+    };
 
     LibLuaHandle* _lua_lib;
     std::shared_ptr<LibLuaStore> _lua_lib_data;
@@ -54,6 +61,8 @@ class LuaProgramHandle: public godot::Node{
 
     HANDLE _event_read;
 
+    HANDLE _event_check_signal_mutex;
+
     bool _print_reader_keep_reading = true;
     HANDLE _print_reader_thread = NULL;
 
@@ -68,6 +77,11 @@ class LuaProgramHandle: public godot::Node{
     CRITICAL_SECTION* _obj_mutex_ptr;
     CRITICAL_SECTION _obj_mutex;
 #endif
+
+    std::thread _event_check_thread;
+    bool _event_check_keep_run_thread = true;
+    std::mutex _event_check_mutex;
+    std::vector<int> _event_check_list;
 
     godot::String _output_reading_buffer;
 
@@ -100,6 +114,8 @@ class LuaProgramHandle: public godot::Node{
 
     void _on_stopped_restart();
 
+    static void _event_check_func(LuaProgramHandle* _this);
+
 #if (_WIN64) || (_WIN32)
     static DWORD _output_reader_thread_ep(LPVOID data);
     static DWORD _print_reader_thread_ep(LPVOID data);
@@ -121,6 +137,7 @@ class LuaProgramHandle: public godot::Node{
     void restart_lua();
 
     bool is_running() const;
+    bool is_paused() const;
     bool is_loaded() const;
 
     void resume_lua();

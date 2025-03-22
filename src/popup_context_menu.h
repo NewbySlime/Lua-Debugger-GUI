@@ -36,6 +36,9 @@ class PopupContextMenu: public godot::PopupMenu{
         godot::Ref<godot::Texture> icon_texture;
         godot::String submenu_label;
         int32_t max_state, default_state;
+
+        godot::String tooltip_text;
+        bool is_disabled = false;
       };
 
       std::vector<Part> part_list;

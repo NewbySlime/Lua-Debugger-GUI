@@ -66,5 +66,9 @@ void PopupContextMenu::init_menu(const MenuData& data){
       break; case MenuData::type_separator:
         add_separator(part.label, part.id);
     }
+
+    int idx = get_item_index(part.id);
+    set_item_tooltip(idx, part.tooltip_text);
+    set_item_disabled(idx, part.is_disabled);
   }
 }

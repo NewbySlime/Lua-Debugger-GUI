@@ -18,6 +18,8 @@
 
 #include "algorithm"
 
+// TODO copy should instantly copy the data
+// TODO feature to rename the key
 
 using namespace gdutils;
 using namespace godot;
@@ -38,7 +40,7 @@ struct _setter_usage_pass_data{
 
 void LuaVariableTree::_bind_methods(){
   ClassDB::bind_method(D_METHOD("_item_collapsed_safe", "item"), &LuaVariableTree::_item_collapsed_safe);
-  ClassDB::bind_method(D_METHOD("_item_collapsed", "item"), &LuaVariableTree::_item_collapsed);
+  ClassDB::bind_method(D_METHOD("_item_collapsed", "item_id"), &LuaVariableTree::_item_collapsed);
   ClassDB::bind_method(D_METHOD("_item_selected"), &LuaVariableTree::_item_selected);
   ClassDB::bind_method(D_METHOD("_item_nothing_selected"), &LuaVariableTree::_item_nothing_selected);
   ClassDB::bind_method(D_METHOD("_item_selected_mouse", "mouse_pos", "mouse_button_index"), &LuaVariableTree::_item_selected_mouse);
@@ -76,21 +78,21 @@ LuaVariableTree::~LuaVariableTree(){
 
 
 void LuaVariableTree::_item_collapsed_safe(TreeItem* item){
-  _update_callable_list.insert(_update_callable_list.end(), Callable(this, "_item_collapsed").bind(item));
+  _update_callable_list.insert(_update_callable_list.end(), Callable(this, "_item_collapsed").bind(item->get_instance_id()));
 }
 
-void LuaVariableTree::_item_collapsed(TreeItem* item){
-  if(item->is_collapsed())
+void LuaVariableTree::_item_collapsed(uint64_t id){
+  auto _iter = _vartree_map.find(id);
+  if(_iter == _vartree_map.end() || _iter->second->already_revealed)
     return;
 
-  auto _iter = _vartree_map.find(item->get_instance_id());
-  if(_iter == _vartree_map.end() || _iter->second->already_revealed)
+  if(_iter->second->this_item->is_collapsed())
     return;
 
   if(_iter->second->this_value->get_type() != I_table_var::get_static_lua_type())
     return;
 
-  _reveal_tree_item(item, NULL);
+  _reveal_tree_item(_iter->second->this_item, NULL);
 }
 
 void LuaVariableTree::_item_selected(){
@@ -226,7 +228,10 @@ void LuaVariableTree::_on_setter_applied_add_table(TreeItem* parent_item, I_vari
     _global_confirmation_dialog->popup_centered();
   }
   else
-    _on_setter_applied_add_table_confirmed(_iter->second, key_var, value_var);  
+    _on_setter_applied_add_table_confirmed(_iter->second, key_var, value_var);
+    
+  if(_value_test)
+    _tvar->free_variant(_value_test);
 }
 
 void LuaVariableTree::_on_setter_applied_add_table_confirmed_variant(const Variant& data){
@@ -461,11 +466,17 @@ void LuaVariableTree::_reveal_tree_item(TreeItem* item, _item_state* state){
       continue;
 
     I_variant* _value_data = _tvar->get_value(_key_data);
+{ // enclosure for using gotos
+    if(!_value_data || _value_data->get_type() == I_nil_var::get_static_lua_type())
+      goto skip_query_continue;
 
     _query_key_value _query;
       _query.key = cpplua_create_var_copy(_key_data);
 
     _queried_list.insert(_queried_list.end(), _query);
+} // enclosure closing
+    skip_query_continue:{}
+    _tvar->free_variant(_value_data);
   }
   
   for(_query_key_value& _query: _queried_list){
@@ -638,9 +649,13 @@ void LuaVariableTree::_set_tree_item_value_direct(TreeItem* item, I_variant* val
     _tvar->set_value(_iter->second->this_key, _set_value);
 
     // value should use the value that has been set to a table
+    // just in case for referenced item
     I_variant* _set_result = _tvar->get_value(_iter->second->this_key);
-    if(_set_result)
-      value = _set_result;
+    if(!_set_result)
+      goto skip_value_set;
+      
+    cpplua_delete_variant(value);
+    value = _set_result;
 } // enclosure closing
     skip_value_set:{}
 } // enclosure closing
@@ -1060,10 +1075,12 @@ void LuaVariableTree::_open_context_menu(){
   PopupContextMenu::MenuData _data;
   PopupContextMenu::MenuData::Part _tmp_part;
   if(_iter->second->_mflag & metadata_valid_mutable_item){
+      _tmp_part = PopupContextMenu::MenuData::Part();
       _tmp_part.item_type = PopupContextMenu::MenuData::type_normal;
       _tmp_part.label = "Edit Variable";
       _tmp_part.id = context_menu_edit;
     _data.part_list.insert(_data.part_list.end(), _tmp_part);
+      _tmp_part = PopupContextMenu::MenuData::Part();
       _tmp_part.item_type = PopupContextMenu::MenuData::type_normal;
       _tmp_part.label = "Delete Variable";
       _tmp_part.id = context_menu_remove;
@@ -1073,15 +1090,15 @@ void LuaVariableTree::_open_context_menu(){
   if(_iter->second->this_value){
     // create separator only when there's any item
     if(_data.part_list.size() > 0){
+        _tmp_part = PopupContextMenu::MenuData::Part();
         _tmp_part.item_type = PopupContextMenu::MenuData::type_separator;
-        _tmp_part.label = "";
-        _tmp_part.id = -1;
       _data.part_list.insert(_data.part_list.end(), _tmp_part);
     }
 
     // check if table variable
     switch(_iter->second->this_value->get_type()){
       break; case I_table_var::get_static_lua_type():{
+          _tmp_part = PopupContextMenu::MenuData::Part();
           _tmp_part.item_type = PopupContextMenu::MenuData::type_normal;
           _tmp_part.label = gd_format_str("Add Table Variable");
           _tmp_part.id = context_menu_add_table;
@@ -1089,6 +1106,7 @@ void LuaVariableTree::_open_context_menu(){
       }
 
       break; case I_local_table_var::get_static_lua_type():{
+          _tmp_part = PopupContextMenu::MenuData::Part();
           _tmp_part.item_type = PopupContextMenu::MenuData::type_normal;
           _tmp_part.label = gd_format_str("Add Local Variable");
           _tmp_part.id = context_menu_add_table;
@@ -1098,13 +1116,34 @@ void LuaVariableTree::_open_context_menu(){
   }
 
   if(_has_table_parent){
+      _tmp_part = PopupContextMenu::MenuData::Part();
       _tmp_part.item_type = PopupContextMenu::MenuData::type_normal;
-      _tmp_part.label = gd_format_str("Add Variable{0}", (_iter->second->_mflag & metadata_local_item)? " (local)": "");
+      _tmp_part.label = "Add Variable";
       _tmp_part.id = context_menu_add;
+
+    if(_iter->second->_mflag & metadata_local_item){
+      _tmp_part.label = "Add Local Variable";
+
+{ // enclosure for using gotos
+      TreeItem* _parent_item = _iter->second->this_item;
+      if(!_parent_item)
+        goto skip_add_local_var_check;
+
+      auto _parent_iter = _vartree_map.find(_parent_item->get_instance_id());
+      if(_parent_iter == _vartree_map.end())
+        goto skip_add_local_var_check;
+
+      
+} // enclosure closing
+
+      skip_add_local_var_check:{}
+    }
+
     _data.part_list.insert(_data.part_list.end(), _tmp_part);
 
     // disable copying value for local variable
     if((_iter->second->_mflag & metadata_local_item) <= 0){
+        _tmp_part = PopupContextMenu::MenuData::Part();
         _tmp_part.item_type = PopupContextMenu::MenuData::type_normal;
         _tmp_part.label = "Copy Variable";
         _tmp_part.id = context_menu_copy;

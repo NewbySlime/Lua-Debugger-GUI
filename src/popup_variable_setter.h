@@ -113,7 +113,7 @@ class PopupVariableSetter: public godot::PopupPanel{
     void _reset_enum_button_config();
 
     void _update_setter_ui();
-    void _update_use_reference_key_flag();
+    void _update_variable_key_setter();
 
     static void _code_initiate();
 

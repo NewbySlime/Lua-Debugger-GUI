@@ -113,6 +113,9 @@ void VariableWatcher::_lua_on_pausing(){
 void VariableWatcher::_lua_on_resuming(){
   _update_item_state_tree();
   _clear_variable_tree();
+
+  _local_item = NULL;
+  _global_item = NULL;
 }
 
 void VariableWatcher::_lua_on_stopping(){
@@ -120,6 +123,9 @@ void VariableWatcher::_lua_on_stopping(){
   _clear_item_state(&_global_item_state_tree);
   _clear_variable_tree();
   _update_placeholder_state();
+
+  _local_item = NULL;
+  _global_item = NULL;
 }
 
 
@@ -197,6 +203,9 @@ bool VariableWatcher::_check_ignored_variable(_variable_tree_item_metadata* meta
 
 
 void VariableWatcher::_update_item_state_tree(){
+  if(!_global_item || !_local_item)
+    return;
+
 { // enclosure for using gotos
   auto _local_iter = _vartree_map.find(_local_item->get_instance_id());
   if(_local_iter == _vartree_map.end() || !_local_iter->second->this_key)

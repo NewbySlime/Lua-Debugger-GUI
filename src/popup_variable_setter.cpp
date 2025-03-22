@@ -133,7 +133,7 @@ void PopupVariableSetter::_on_value_set_type_enum_data(const Variant& data){
 
 void PopupVariableSetter::_on_value_set_use_reference_key_flag_data(const Variant& data){
   _data_init.use_reference_key = data;
-  _update_use_reference_key_flag();
+  _update_variable_key_setter();
 }
 
 
@@ -195,18 +195,8 @@ void PopupVariableSetter::_reset_enum_button_config(){
 void PopupVariableSetter::_update_setter_ui(){
   _reset_enum_button_config();
 
-  if(_edit_flag & edit_add_key_edit){
-    _ginvoker->invoke(key_local_key_data, "set_visible", (bool)(_edit_flag & edit_local_key));
-    _ginvoker->invoke(key_variable_key_data, "set_visible", !(bool)(_edit_flag & edit_local_key));
-
-    _data_output.use_reference_key = false;
-    _update_use_reference_key_flag();
-  }
-  else{
-    _ginvoker->invoke(key_local_key_data, "set_visible", false);
-    _ginvoker->invoke(key_variable_key_data, "set_visible", false);
-    _ginvoker->invoke(key_use_reference_key_flag_data, "set_visible", false);
-  }
+  _data_output.use_reference_key = false;
+  _update_variable_key_setter();
 
   _ginvoker->invoke(key_value_data, "set_visible", (bool)(_edit_flag & edit_add_value_edit));
   
@@ -226,15 +216,23 @@ void PopupVariableSetter::_update_setter_ui(){
   set_mode_type(_current_mode);
 }
 
-
-void PopupVariableSetter::_update_use_reference_key_flag(){
-  // Use Reference Key Flag
-  bool _use_reference_key_visible = (_edit_flag & edit_add_key_edit) > 0 && (_edit_flag & edit_local_key) <= 0 && _current_mode == setter_mode_reference_list;
-  _ginvoker->invoke(key_use_reference_key_flag_data, "set_visible", _use_reference_key_visible);
-
-  // Check variable key property
-  bool _variable_key_visible = (_edit_flag & edit_add_key_edit) > 0 && (_edit_flag & edit_local_key) <= 0 && !_data_output.use_reference_key;
-  _ginvoker->invoke(key_variable_key_data, "set_visible", _variable_key_visible);
+void PopupVariableSetter::_update_variable_key_setter(){
+  if(_edit_flag & edit_add_key_edit){
+    bool _local_key_setter_visible = _edit_flag & edit_local_key;
+    bool _variable_key_setter_visible = !_local_key_setter_visible;
+    
+    // Use Reference Key Flag
+    _ginvoker->invoke(key_use_reference_key_flag_data, "set_visible", _current_mode == setter_mode_reference_list && !_local_key_setter_visible);
+    
+    // Check variable key property
+    _ginvoker->invoke(key_local_key_data, "set_visible", _local_key_setter_visible && !_data_init.use_reference_key);
+    _ginvoker->invoke(key_variable_key_data, "set_visible", _variable_key_setter_visible && !_data_init.use_reference_key);
+  }
+  else{
+    _ginvoker->invoke(key_local_key_data, "set_visible", false);
+    _ginvoker->invoke(key_variable_key_data, "set_visible", false);
+    _ginvoker->invoke(key_use_reference_key_flag_data, "set_visible", false);
+  }
 }
 
 
@@ -334,7 +332,7 @@ void PopupVariableSetter::set_mode_type(uint32_t mode){
     _option_list->set_value_data(key_type_enum_button, _data);
   }
 
-  _update_use_reference_key_flag();
+  _update_variable_key_setter();
 }
 
 uint32_t PopupVariableSetter::get_mode_type() const{

@@ -75,7 +75,7 @@ class LuaVariableTree: public godot::Tree{
     bool _is_using_variable_setter = false;
 
     void _item_collapsed_safe(godot::TreeItem* item);
-    void _item_collapsed(godot::TreeItem* item);
+    void _item_collapsed(uint64_t id);
     void _item_selected();
     void _item_nothing_selected();
     void _item_selected_mouse(const godot::Vector2 mouse_pos, int mouse_idx);
