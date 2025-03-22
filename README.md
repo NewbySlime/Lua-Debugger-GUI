@@ -1,6 +1,6 @@
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/X8X0175H9C)
 
-# Lua Debugger
+# Luatch (Previously named Lua-Debugger-GUI)
 A debugger made for Lua with Graphical UI made using Godot 4.3. Currently only works on Windows.
 
 ![Lua Debugger](README-Asset/gui-debugger.png)
@@ -15,7 +15,7 @@ This is a part of a project: [Lua-Debug-API](https://github.com/NewbySlime/Lua-D
 - Integrated console window for Lua IO.
 
 ## Limitations
-- This only works on Windows as of now (Windows 10 19045). Considering on creating Linux version of the project.
+- This only works on Windows as of now (Windows 10 19045). Still working on creating Linux version of the project.
 
 ## How To Use
 Open the program, then
@@ -68,8 +68,7 @@ After that, set "Custom Template" parameter in exporting configuration window wi
 ## Planned Features
 These planned features are uncertain as of now, end goal of the project might change over time. Reason for uncertainty is due to this project being a personal learning project. As for now, I wanted to push the limits of what I can do with Lua code.
 Note: the list is ordered by priority, top is highest priority, bottom is lowest priority.
-- Reference List (holding Table and Function values as reference)
-- Editing values using VariableWatcher (not yet for Table and Functions)
+- Editing values using VariableWatcher (not yet for Functions)
 - Linux Support
 - Stack view (containing currently running functions)
 - Seperating debugger and user programs by using IPC (in case of the Lua program does not respond)?
@@ -77,6 +76,7 @@ Note: the list is ordered by priority, top is highest priority, bottom is lowest
 - File editing (maybe?)
 - ~~Breakpoints~~
 - ~~Partial reveal for VariableWatcher~~
+- ~~Reference List (holding Table and Function values as reference)~~
 
 ## Contributing
 Any contributions are appreciated, make sure to state the problems in the app or wanted features. You might also want to expect on some short delay in merging since I'm still in University.
