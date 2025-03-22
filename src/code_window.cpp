@@ -418,7 +418,7 @@ void CodeWindow::open_code_context(){
 #if (_WIN64) || (_WIN32)
   OPENFILENAMEA _file_config; ZeroMemory(&_file_config, sizeof(OPENFILENAMEA));
   _file_config.lStructSize = sizeof(OPENFILENAMEA);
-  _file_config.lpstrFilter = "*.LUA;.TXT";
+  _file_config.lpstrFilter = "Lua File\0*.LUA;*.TXT\0Any File\0*\0";
   _file_config.lpstrFile = _file_path_buffer;
   _file_config.nMaxFile = _file_path_buffer_size;
   _file_config.lpstrInitialDir = _initial_prompt_path.c_str();
