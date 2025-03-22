@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="Lua Debugger"
+config/name="Luatch"
 config/version="0.4.0"
 run/main_scene="res://scenes/main_window.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")
